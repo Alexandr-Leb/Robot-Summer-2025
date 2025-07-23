@@ -203,7 +203,7 @@ void loop() {
 
       case TapeFind:
       readReflectanceSensors();
-      runHysteresis(-800);
+      runHysteresis(800);
       if (leftOnTape || rightOnTape) {
         computePID();
         currentProcedureState = TapeFollow;
