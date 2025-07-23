@@ -96,6 +96,11 @@ bool prevRightOnTape;
 int leftReflectanceThreshold;
 int rightReflectanceThreshold;
 
+// Variables - Reflectance Threshold Average Calculation
+int leftReflectanceThresholdSum;
+int rightReflectanceThresholdSum;
+int reflectanceAverageLoopCounter;
+
 // --- Function Headers --- //
 void readReflectanceSensors(); // Reads and computes hysteresis variables
 void computePID();
@@ -139,6 +144,11 @@ void setup() {
   prevLeftOnTape = true;
   prevRightOnTape = true;
 
+  // Variables - Reflectance Threshold Average Calculation
+  leftReflectanceThresholdSum = 0;
+  rightReflectanceThresholdSum = 0;
+  reflectanceAverageLoopCounter = 0;
+
   // Reflectance Sensor Analog Input Setup
   adc1_config_width(ADC_WIDTH_12Bit);
   adc1_config_channel_atten(LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
@@ -175,13 +185,13 @@ void setup() {
 void loop() {
   switch(currentMasterState) {
     case MasterState::ClearDoorway:
-    switch(currentProcedureState) {
-      case ProcedureState::TapeFollow:
-      break;
+    // switch(currentProcedureState) {
+    //   case ProcedureState::TapeFollow:
+    //   break;
 
-      case ProcedureState::TapeFind:
-      break;
-    }
+    //   case ProcedureState::TapeFind:
+    //   break;
+    // }
     break;
 
     case MasterState::Pet1:
@@ -217,9 +227,12 @@ void loop() {
     break;
 
     case MasterState::Initialize:
-    leftReflectanceThreshold = adc1_get_raw(LEFT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
-    rightReflectanceThreshold = adc1_get_raw(RIGHT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
+    leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
+    rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+    reflectanceAverageLoopCounter++;
     if (millis() > 500) {
+      leftReflectanceThreshold = (int) (leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+      rightReflectanceThreshold = (int) (rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
       currentMasterState = MasterState::Test;
       currentProcedureState = ProcedureState::TapeFollow;
     }
