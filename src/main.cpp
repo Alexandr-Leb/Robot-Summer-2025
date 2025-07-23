@@ -9,15 +9,15 @@
 #define LEFT_MOTOR_REVERSE_PIN 26
 #define RIGHT_MOTOR_FORWARDS_PIN 33
 #define RIGHT_MOTOR_REVERSE_PIN 32
-#define VERTICAL_MOTOR_FORWARDS_PIN 0
+#define VERTICAL_MOTOR_FORWARDS_PIN 2
 #define VERTICAL_MOTOR_REVERSE_PIN 15
 
 // Pins - Servos
-#define CLAW_SERVO_PIN 4
-#define WRIST_SERVO_PIN 5
-#define ELBOW_SERVO_PIN 13
-#define SHOULDER_SERVO_PIN 14
-#define ARM_ROTATION_SERVO_PIN 12
+#define CLAW_SERVO_PIN 13
+#define WRIST_SERVO_PIN 12
+#define ELBOW_SERVO_PIN 14
+#define SHOULDER_SERVO_PIN 4
+#define ARM_ROTATION_SERVO_PIN 5
 
 // Pins - Sensors
 #define LEFT_REFLECTANCE_PIN ADC1_CHANNEL_2 // 38
@@ -128,9 +128,9 @@ void setup() {
   verticalTimeSwitch = 0;
 
   // Variables - PID
-  k_p = 1.8;
+  k_p = 1.5;
   k_i = 0.0;
-  k_d = 2.0;
+  k_d = 2.5;
   pValue = 0.0;
   iValue = 0.0;
   dValue = 0.0;
@@ -179,9 +179,6 @@ void setup() {
   ledcAttachPin(ELBOW_SERVO_PIN, ELBOW_CHANNEL);
   ledcAttachPin(SHOULDER_SERVO_PIN, SHOULDER_CHANNEL);
   ledcAttachPin(ARM_ROTATION_SERVO_PIN, ARM_ROTATION_CHANNEL);
-
-  // Serial Setup
-  Serial.begin(115200);
 }
 
 // --- Loop --- //
@@ -210,25 +207,23 @@ void loop() {
     break;
 
     case MasterState::Test:
-    // switch(currentProcedureState) {
-    //   case ProcedureState::TapeFollow:
-    //   runPID(800);
-    //   if (!leftOnTape && !rightOnTape) {
-    //     currentProcedureState = ProcedureState::TapeFind;
-    //   }
-    //   break;
+    switch(currentProcedureState) {
+      case ProcedureState::TapeFollow:
+      runPID(1000);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = ProcedureState::TapeFind;
+      }
+      break;
 
-    //   case ProcedureState::TapeFind:
-    //   readReflectanceSensors();
-    //   runHysteresis(-800);
-    //   if (leftOnTape || rightOnTape) {
-    //     computePID();
-    //     currentProcedureState = ProcedureState::TapeFollow;
-    //   }
-    //   break;
-    // }
-    readReflectanceSensors();
-    Serial.printf("%d | %d | %d | %d", leftReflectance, rightReflectance, leftReflectanceThreshold, rightReflectanceThreshold);
+      case ProcedureState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(-900);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      break;
+    }
     break;
 
     case MasterState::Initialize:
