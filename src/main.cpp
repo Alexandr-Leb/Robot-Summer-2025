@@ -59,9 +59,7 @@
 
 // --- Variables --- //
 // Variables - State
-enum MasterState {Initialize, Test};
-#define MASTER_STATE_ARRAY_SIZE 2
-MasterState masterStateArray[MASTER_STATE_ARRAY_SIZE] = {Initialize, Test};
+enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
 enum ProcedureState {TapeFollow, TapeFind};
@@ -110,7 +108,7 @@ void verticalMotor_SetPower(int power); // Negative power for reverse, between -
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = masterStateArray[0];
+  currentMasterState = MasterState::Initialize;
 
   // Variables - Reflectance Sensors
   leftReflectance = 0;
@@ -176,34 +174,54 @@ void setup() {
 // --- Loop --- //
 void loop() {
   switch(currentMasterState) {
-    case Test:
+    case MasterState::ClearDoorway:
     switch(currentProcedureState) {
-      case TapeFollow:
-      readReflectanceSensors();
-      computePID();
+      case ProcedureState::TapeFollow:
+      break;
+
+      case ProcedureState::TapeFind:
+      break;
+    }
+    break;
+
+    case MasterState::Pet1:
+    break;
+
+    case MasterState::ClimbRamp:
+    break;
+
+    case MasterState::Pet2:
+    break;
+
+    case MasterState::Pet3:
+    break;
+
+    case MasterState::Test:
+    switch(currentProcedureState) {
+      case ProcedureState::TapeFollow:
       runPID(800);
       if (!leftOnTape && !rightOnTape) {
-        currentProcedureState = TapeFind;
+        currentProcedureState = ProcedureState::TapeFind;
       }
       break;
 
-      case TapeFind:
+      case ProcedureState::TapeFind:
       readReflectanceSensors();
       runHysteresis(-800);
       if (leftOnTape || rightOnTape) {
         computePID();
-        currentProcedureState = TapeFollow;
+        currentProcedureState = ProcedureState::TapeFollow;
       }
       break;
     }
     break;
 
-    case Initialize:
+    case MasterState::Initialize:
     leftReflectanceThreshold = adc1_get_raw(LEFT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
     rightReflectanceThreshold = adc1_get_raw(RIGHT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
     if (millis() > 500) {
-      currentMasterState = masterStateArray[1];
-      currentProcedureState = TapeFollow;
+      currentMasterState = MasterState::Test;
+      currentProcedureState = ProcedureState::TapeFollow;
     }
     break;
   } 
@@ -230,6 +248,8 @@ void computePID() {
 }
 
 void runPID(int power) {
+  readReflectanceSensors();
+  computePID();
   leftMotor_SetPower((int) (power + pValue + dValue));
   rightMotor_SetPower((int) (power - pValue - dValue));
 }
