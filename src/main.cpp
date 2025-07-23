@@ -179,6 +179,9 @@ void setup() {
   ledcAttachPin(ELBOW_SERVO_PIN, ELBOW_CHANNEL);
   ledcAttachPin(SHOULDER_SERVO_PIN, SHOULDER_CHANNEL);
   ledcAttachPin(ARM_ROTATION_SERVO_PIN, ARM_ROTATION_CHANNEL);
+
+  // Serial Setup
+  Serial.begin(115200);
 }
 
 // --- Loop --- //
@@ -207,23 +210,25 @@ void loop() {
     break;
 
     case MasterState::Test:
-    switch(currentProcedureState) {
-      case ProcedureState::TapeFollow:
-      runPID(800);
-      if (!leftOnTape && !rightOnTape) {
-        currentProcedureState = ProcedureState::TapeFind;
-      }
-      break;
+    // switch(currentProcedureState) {
+    //   case ProcedureState::TapeFollow:
+    //   runPID(800);
+    //   if (!leftOnTape && !rightOnTape) {
+    //     currentProcedureState = ProcedureState::TapeFind;
+    //   }
+    //   break;
 
-      case ProcedureState::TapeFind:
-      readReflectanceSensors();
-      runHysteresis(-800);
-      if (leftOnTape || rightOnTape) {
-        computePID();
-        currentProcedureState = ProcedureState::TapeFollow;
-      }
-      break;
-    }
+    //   case ProcedureState::TapeFind:
+    //   readReflectanceSensors();
+    //   runHysteresis(-800);
+    //   if (leftOnTape || rightOnTape) {
+    //     computePID();
+    //     currentProcedureState = ProcedureState::TapeFollow;
+    //   }
+    //   break;
+    // }
+    readReflectanceSensors();
+    Serial.printf("%d | %d | %d | %d", leftReflectance, rightReflectance, leftReflectanceThreshold, rightReflectanceThreshold);
     break;
 
     case MasterState::Initialize:
