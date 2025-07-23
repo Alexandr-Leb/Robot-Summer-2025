@@ -51,8 +51,8 @@
 // Constants - General
 
 // Constants - Tape Following
-#define REFLECTANCE_THRESHOLD_OFFSET 500
-#define HYSTERESIS_MULTIPLIER 10
+#define REFLECTANCE_THRESHOLD_OFFSET 400
+#define HYSTERESIS_MULTIPLIER 100
 
 // Constants - Motors
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
@@ -137,9 +137,9 @@ void setup() {
   verticalTimeSwitch = 0;
 
   // Variables - PID
-  k_p = 0.27;
+  k_p = 1.8;
   k_i = 0.0;
-  k_d = 0.3;
+  k_d = 2.0;
   pValue = 0.0;
   iValue = 0.0;
   dValue = 0.0;
@@ -189,40 +189,39 @@ void setup() {
 
 // --- Loop --- //
 void loop() {
-//   switch(currentMasterState) {
-//     case Test:
-//     switch(currentProcedureState) {
-//       case TapeFollow:
-//       readReflectanceSensors();
-//       computePID();
-//       runPID(800);
-//       if (!leftOnTape && !rightOnTape) {
-//         currentProcedureState = TapeFind;
-//       }
-//       break;
+  switch(currentMasterState) {
+    case Test:
+    switch(currentProcedureState) {
+      case TapeFollow:
+      readReflectanceSensors();
+      computePID();
+      runPID(800);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = TapeFind;
+      }
+      break;
 
-//       case TapeFind:
-//       readReflectanceSensors();
-//       runHysteresis(800);
-//       if (leftOnTape || rightOnTape) {
-//         computePID();
-//         leftMotor_SetPower(0);
-//         rightMotor_SetPower(0);
-//         currentProcedureState = TapeFollow;
-//       }
-//       break;
-//     }
-//     break;
+      case TapeFind:
+      readReflectanceSensors();
+      runHysteresis(-800);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = TapeFollow;
+      }
+      break;
+    }
+    break;
 
-//     case Initialize:
-//     leftReflectanceThreshold = adc1_get_raw(LEFT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
-//     rightReflectanceThreshold = adc1_get_raw(RIGHT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
-//     if (millis() > 500) {
-//       currentMasterState = masterStateArray[1];
-//       currentProcedureState = TapeFollow;
-//     }
-//     break;
-//   } 
+    case Initialize:
+    readReflectanceSensors();
+    leftReflectanceThreshold = adc1_get_raw(LEFT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
+    rightReflectanceThreshold = adc1_get_raw(RIGHT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
+    if (millis() > 500) {
+      currentMasterState = masterStateArray[1];
+      currentProcedureState = TapeFollow;
+    }
+    break;
+  } 
 }
 
 // --- Function Definitions --- //
@@ -251,8 +250,10 @@ void runPID(int power) {
 }
 
 void runHysteresis(int power) {
-  leftMotor_SetPower(power + (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
-  rightMotor_SetPower(power - (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
+  // leftMotor_SetPower(power + (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
+  // rightMotor_SetPower(power - (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
+  leftMotor_SetPower(-power);
+  rightMotor_SetPower(-power);
 }
 
 void rightMotor_SetPower(int power) {
