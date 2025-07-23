@@ -59,12 +59,16 @@
 #define ARM_PWM_NUM_BITS 12
 
 // --- Variables --- //
+
 // Variables - State
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
-enum ProcedureState {TapeFollow, TapeFind};
+enum ProcedureState {TapeFollow, TapeFind, PetSearch, Intermediate};
 ProcedureState currentProcedureState;
+
+// Variables - Time Control
+unsigned long prevTimeRecord;
 
 // Variables - Reflectance Sensor
 int leftReflectance;
@@ -117,6 +121,9 @@ void verticalMotor_SetPower(int power); // Negative power for reverse, between -
 void setup() {
   // Variables - State
   currentMasterState = MasterState::Initialize;
+
+  // Variables - Time Control
+  prevTimeRecord = 0;
 
   // Variables - Reflectance Sensors
   leftReflectance = 0;
@@ -190,13 +197,37 @@ void setup() {
 void loop() {
   switch(currentMasterState) {
     case MasterState::ClearDoorway:
-    // switch(currentProcedureState) {
-    //   case ProcedureState::TapeFollow:
-    //   break;
+    switch(currentProcedureState) {
+      case ProcedureState::TapeFollow:
+      runPID(1000);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = ProcedureState::TapeFind;
+      }
+      break;
 
-    //   case ProcedureState::TapeFind:
-    //   break;
-    // }
+      case ProcedureState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(1000);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      break;
+
+      case ProcedureState::Intermediate:
+      leftMotor_SetPower(0);
+      rightMotor_SetPower(0);
+      verticalMotor_SetPower(2500);
+      if (millis() - prevTimeRecord > 3000 /* Time to lift basket */) {
+        currentMasterState = MasterState::Pet1;
+        currentProcedureState = ProcedureState::PetSearch;
+      }
+      break;
+    }
+    if (millis() - prevTimeRecord > 3000 /* Time to clear doorway */) {
+      currentProcedureState = ProcedureState::Intermediate;
+      prevTimeRecord = millis();
+    }
     break;
 
     case MasterState::Pet1:
