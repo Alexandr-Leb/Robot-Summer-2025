@@ -9,26 +9,21 @@
 #define LEFT_MOTOR_REVERSE_PIN 26
 #define RIGHT_MOTOR_FORWARDS_PIN 33
 #define RIGHT_MOTOR_REVERSE_PIN 32
-#define VERTICAL_MOTOR_FORWARDS_PIN 12
-#define VERTICAL_MOTOR_REVERSE_PIN 13
+#define VERTICAL_MOTOR_FORWARDS_PIN 0
+#define VERTICAL_MOTOR_REVERSE_PIN 15
 
 // Pins - Servos
-#define CLAW_SERVO_PIN 14
-#define WRIST_SERVO_PIN 15
-#define ELBOW_SERVO_PIN 2
-#define LEFT_SHOULDER_SERVO_PIN 4
-#define RIGHT_SHOULDER_SERVO_PIN 36 // May only need one
-#define ARM_ROTATION_SERVO_PIN 39
+#define CLAW_SERVO_PIN 4
+#define WRIST_SERVO_PIN 5
+#define ELBOW_SERVO_PIN 13
+#define SHOULDER_SERVO_PIN 14
+#define ARM_ROTATION_SERVO_PIN 12
 
 // Pins - Sensors
 #define LEFT_REFLECTANCE_PIN ADC1_CHANNEL_2 // 38
 #define RIGHT_REFLECTANCE_PIN ADC1_CHANNEL_1 // 37
-#define LEFT_MAGNOMETER_PIN 21
-#define RIGHT_MAGNOMETER_PIN 22
-
-// Pins - Control
-#define STATE_SWITCH_PIN 5
-#define STATE_INDICATOR_LED_PIN 7
+#define MAGNETOMETER_PIN_1 21
+#define MAGNETOMETER_PIN_2 22
 
 // --- Channels --- //
 // Channels - Drive Motors
@@ -43,9 +38,8 @@
 #define CLAW_CHANNEL 6
 #define WRIST_CHANNEL 7
 #define ELBOW_CHANNEL 8
-#define LEFT_SHOULDER_CHANNEL 9
-#define RIGHT_SHOULDER_CHANNEL 10
-#define ARM_ROTATION_CHANNEL 11
+#define SHOULDER_CHANNEL 9
+#define ARM_ROTATION_CHANNEL 10
 
 // --- Constants --- //
 // Constants - General
@@ -72,9 +66,6 @@ MasterState currentMasterState;
 
 enum ProcedureState {TapeFollow, TapeFind};
 ProcedureState currentProcedureState;
-
-// Variables - State Switch
-bool stateSwitchState;
 
 // Variables - Reflectance Sensor
 int leftReflectance;
@@ -120,9 +111,6 @@ void verticalMotor_SetPower(int power); // Negative power for reverse, between -
 void setup() {
   // Variables - State
   currentMasterState = masterStateArray[0];
-
-  // Variables - State Switch
-  stateSwitchState = false;
 
   // Variables - Reflectance Sensors
   leftReflectance = 0;
@@ -176,14 +164,12 @@ void setup() {
   ledcSetup(CLAW_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
   ledcSetup(WRIST_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
   ledcSetup(ELBOW_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(LEFT_SHOULDER_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(RIGHT_SHOULDER_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
+  ledcSetup(SHOULDER_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
   ledcSetup(ARM_ROTATION_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
   ledcAttachPin(CLAW_SERVO_PIN, CLAW_CHANNEL);
   ledcAttachPin(WRIST_SERVO_PIN, WRIST_CHANNEL);
   ledcAttachPin(ELBOW_SERVO_PIN, ELBOW_CHANNEL);
-  ledcAttachPin(LEFT_SHOULDER_SERVO_PIN, LEFT_SHOULDER_CHANNEL);
-  ledcAttachPin(RIGHT_SHOULDER_SERVO_PIN, RIGHT_SHOULDER_CHANNEL);
+  ledcAttachPin(SHOULDER_SERVO_PIN, SHOULDER_CHANNEL);
   ledcAttachPin(ARM_ROTATION_SERVO_PIN, ARM_ROTATION_CHANNEL);
 }
 
@@ -203,7 +189,7 @@ void loop() {
 
       case TapeFind:
       readReflectanceSensors();
-      runHysteresis(800);
+      runHysteresis(-800);
       if (leftOnTape || rightOnTape) {
         computePID();
         currentProcedureState = TapeFollow;
@@ -213,7 +199,6 @@ void loop() {
     break;
 
     case Initialize:
-    readReflectanceSensors();
     leftReflectanceThreshold = adc1_get_raw(LEFT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
     rightReflectanceThreshold = adc1_get_raw(RIGHT_REFLECTANCE_PIN) + REFLECTANCE_THRESHOLD_OFFSET;
     if (millis() > 500) {
@@ -252,8 +237,8 @@ void runPID(int power) {
 void runHysteresis(int power) {
   // leftMotor_SetPower(power + (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
   // rightMotor_SetPower(power - (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
-  leftMotor_SetPower(-power);
-  rightMotor_SetPower(-power);
+  leftMotor_SetPower(power);
+  rightMotor_SetPower(power);
 }
 
 void rightMotor_SetPower(int power) {
