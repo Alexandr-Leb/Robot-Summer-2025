@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include "driver/adc.h"
 #include "driver/ledc.h"
+#include <math.h>
 
 // --- Pins --- //
 // Pins - Motors
@@ -9,8 +10,8 @@
 #define LEFT_MOTOR_REVERSE_PIN 26
 #define RIGHT_MOTOR_FORWARDS_PIN 33
 #define RIGHT_MOTOR_REVERSE_PIN 32
-#define VERTICAL_MOTOR_FORWARDS_PIN 2
-#define VERTICAL_MOTOR_REVERSE_PIN 15
+#define VERTICAL_MOTOR_FORWARDS_PIN 15
+#define VERTICAL_MOTOR_REVERSE_PIN 2
 
 // Pins - Servos
 #define CLAW_SERVO_PIN 13
@@ -46,7 +47,7 @@
 
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
-#define HYSTERESIS_MULTIPLIER 100
+#define HYSTERESIS_MULTIPLIER 50
 
 // Constants - Motors
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
@@ -87,6 +88,8 @@ double dValue;
 int error;
 int prevError;
 long prevTime; // in us
+double k_e;
+double eValue;
 
 // Variables - Hysteresis
 bool leftOnTape;
@@ -130,13 +133,15 @@ void setup() {
   // Variables - PID
   k_p = 1.5;
   k_i = 0.0;
-  k_d = 2.5;
+  k_d = 2.0;
   pValue = 0.0;
   iValue = 0.0;
   dValue = 0.0;
   error = 0;
   prevError = 0;
-  prevTime = 0;  
+  prevTime = 0;
+  k_e = 0.2;
+  eValue = 0.0;
 
   // Variables - Hysteresis
   leftOnTape = true;
@@ -217,7 +222,7 @@ void loop() {
 
       case ProcedureState::TapeFind:
       readReflectanceSensors();
-      runHysteresis(-900);
+      runHysteresis(1000);
       if (leftOnTape || rightOnTape) {
         computePID();
         currentProcedureState = ProcedureState::TapeFollow;
@@ -237,7 +242,7 @@ void loop() {
       currentProcedureState = ProcedureState::TapeFollow;
     }
     break;
-  } 
+  }
 }
 
 // --- Function Definitions --- //
@@ -256,6 +261,7 @@ void computePID() {
   error = rightReflectance - leftReflectance;
   pValue = k_p * (double) error;
   dValue = k_d * ((double) (error - prevError)) / ((double) (micros() - prevTime));
+  eValue = k_e * (double) error;
   prevTime = micros();
   prevError = error;
 }
@@ -263,15 +269,15 @@ void computePID() {
 void runPID(int power) {
   readReflectanceSensors();
   computePID();
-  leftMotor_SetPower((int) (power + pValue + dValue));
-  rightMotor_SetPower((int) (power - pValue - dValue));
+  leftMotor_SetPower((int) (power + pValue + dValue - abs(eValue)));
+  rightMotor_SetPower((int) (power - pValue - dValue - abs(eValue)));
 }
 
 void runHysteresis(int power) {
-  // leftMotor_SetPower(power + (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
-  // rightMotor_SetPower(power - (int) (k_p * prevError * HYSTERESIS_MULTIPLIER));
-  leftMotor_SetPower(power);
-  rightMotor_SetPower(power);
+  leftMotor_SetPower(power + (int) (prevError * HYSTERESIS_MULTIPLIER));
+  rightMotor_SetPower(power - (int) (prevError * HYSTERESIS_MULTIPLIER));
+  // leftMotor_SetPower(power);
+  // rightMotor_SetPower(power);
 }
 
 void rightMotor_SetPower(int power) {
