@@ -2,7 +2,6 @@
 #include <Arduino.h>
 #include "driver/adc.h"
 #include "driver/ledc.h"
-// Git Test
 
 // --- Pins --- //
 // Pins - Motors
