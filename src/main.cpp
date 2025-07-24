@@ -205,7 +205,7 @@ void updateServos();
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::Test;
+  currentMasterState = MasterState::Initialize;
 
   // Variables - Time Control
   prevTimeRecord = 0;
@@ -381,6 +381,7 @@ void loop() {
     //   currentMasterState = MasterState::Test;
     //   currentProcedureState = ProcedureState::TapeFollow;
     // }
+    verticalMotor_SetPower(-3000);
     break;
   }
 }
