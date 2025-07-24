@@ -17,11 +17,11 @@
 #define VERTICAL_MOTOR_REVERSE_PIN 2
 
 // Pins - Servos
-#define CLAW_SERVO_PIN 13
-#define WRIST_SERVO_PIN 12
-#define ELBOW_SERVO_PIN 14
-#define SHOULDER_SERVO_PIN 4
-#define ARM_ROTATION_SERVO_PIN 5
+#define PIN_BASE_ROT     5
+#define PIN_SHOULDER     4
+#define PIN_ELBOW       14
+#define PIN_WRIST       12
+#define PIN_CLAW        13
 
 // Pins - Sensors
 #define LEFT_REFLECTANCE_PIN ADC1_CHANNEL_2 // 38
@@ -39,14 +39,87 @@
 #define VERTICAL_REVERSE_CHANNEL 5
 
 // Channels - Arm Servos
-#define CLAW_CHANNEL 6
-#define WRIST_CHANNEL 7
-#define ELBOW_CHANNEL 8
-#define SHOULDER_CHANNEL 9
-#define ARM_ROTATION_CHANNEL 10
+#define CH_BASE_ROT      6
+#define CH_SHOULDER      7
+#define CH_ELBOW         8
+#define CH_WRIST         9
+#define CH_CLAW         10
 
 // --- Constants --- //
-// Constants - General
+// Constants - Arm Servos
+#define SERVO_PWM_FREQ_HZ   50          // 20 ms period
+#define SERVO_PWM_RES_BITS  16          // 0‑65535
+#define SERVO_PERIOD_US     (1000000UL / SERVO_PWM_FREQ_HZ)
+#define SERVO_MAX_COUNT     ((1UL << SERVO_PWM_RES_BITS) - 1)
+
+#define JOINT_BASE_ROT   0
+#define JOINT_SHOULDER   1
+#define JOINT_ELBOW      2
+#define JOINT_WRIST      3
+#define JOINT_CLAW       4
+#define JOINT_COUNT      5
+
+static const uint8_t JOINT_PIN[JOINT_COUNT] = {
+    PIN_BASE_ROT, PIN_SHOULDER, PIN_ELBOW, PIN_WRIST, PIN_CLAW
+};
+static const uint8_t JOINT_CH[JOINT_COUNT]  = {
+    CH_BASE_ROT,  CH_SHOULDER,  CH_ELBOW,  CH_WRIST,  CH_CLAW
+};
+
+#define MIN_US_BASE_ROT   550
+#define MIN_US_SHOULDER   550
+#define MIN_US_ELBOW      550
+#define MIN_US_WRIST      550
+#define MIN_US_CLAW       550
+
+#define MAX_US_BASE_ROT  2450
+#define MAX_US_SHOULDER  2450
+#define MAX_US_ELBOW     2450
+#define MAX_US_WRIST     2450
+#define MAX_US_CLAW      2450
+
+static const uint16_t JOINT_MIN_US[JOINT_COUNT] = {
+    MIN_US_BASE_ROT, MIN_US_SHOULDER, MIN_US_ELBOW, MIN_US_WRIST, MIN_US_CLAW
+};
+static const uint16_t JOINT_MAX_US[JOINT_COUNT] = {
+    MAX_US_BASE_ROT, MAX_US_SHOULDER, MAX_US_ELBOW, MAX_US_WRIST, MAX_US_CLAW
+};
+
+#define SPEED_IMMEDIATE_DEGPS   10000.0f  // “jump now”
+#define SLEW_BASE_ROT           40.0f
+#define SLEW_SHOULDER           40.0f
+#define SLEW_ELBOW              40.0f
+#define SLEW_WRIST              40.0f
+#define SLEW_CLAW               SPEED_IMMEDIATE_DEGPS
+
+static const float JOINT_SLEW_DEGPS[JOINT_COUNT] = {
+    SLEW_BASE_ROT, SLEW_SHOULDER, SLEW_ELBOW, SLEW_WRIST, SLEW_CLAW
+};
+
+struct JointState {
+  float    currentDeg;    // PWM'd position
+  float    targetDeg;     // user target
+  uint32_t lastUpdateMs;  // timestamp of last currentDeg change
+};
+static JointState joints[JOINT_COUNT]; //array for keeping track of joint states
+
+static inline float clampDeg(float d) {
+  return (d < 0.0f) ? 0.0f : (d > 180.0f ? 180.0f : d);
+}
+
+static inline uint16_t angleToUs(uint8_t joint, float deg) {
+  deg = clampDeg(deg);
+  uint16_t usMin = JOINT_MIN_US[joint];
+  uint16_t usMax = JOINT_MAX_US[joint];
+  return usMin + (uint16_t)((usMax - usMin) * (deg / 180.0f) + 0.5f);
+}
+
+static inline uint32_t usToDuty(uint16_t us) {
+  uint32_t duty = ((uint64_t)us * SERVO_MAX_COUNT) / SERVO_PERIOD_US;
+  return (duty > SERVO_MAX_COUNT) ? SERVO_MAX_COUNT : duty;
+}
+
+using Joint = uint8_t;
 
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
@@ -124,6 +197,10 @@ void runHysteresis(int power);
 void rightMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void leftMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void verticalMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
+static void writeServoRaw(Joint j, float deg);
+void setJointTarget(Joint j, float deg);
+void setAllTargets(float baseDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg);
+void updateServos();
 
 // --- Setup --- //
 void setup() {
@@ -191,17 +268,33 @@ void setup() {
   ledcAttachPin(VERTICAL_MOTOR_FORWARDS_PIN, VERTICAL_FORWARDS_CHANNEL);
   ledcAttachPin(VERTICAL_MOTOR_REVERSE_PIN, VERTICAL_REVERSE_CHANNEL);
 
-  // Arm PWM Setup
-  ledcSetup(CLAW_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(WRIST_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(ELBOW_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(SHOULDER_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcSetup(ARM_ROTATION_CHANNEL, ARM_PWM_FREQUENCY, ARM_PWM_NUM_BITS);
-  ledcAttachPin(CLAW_SERVO_PIN, CLAW_CHANNEL);
-  ledcAttachPin(WRIST_SERVO_PIN, WRIST_CHANNEL);
-  ledcAttachPin(ELBOW_SERVO_PIN, ELBOW_CHANNEL);
-  ledcAttachPin(SHOULDER_SERVO_PIN, SHOULDER_CHANNEL);
-  ledcAttachPin(ARM_ROTATION_SERVO_PIN, ARM_ROTATION_CHANNEL);
+  // Arm Setup
+  for (uint8_t j = 0; j < JOINT_COUNT; ++j) {
+    ledcSetup(JOINT_CH[j], SERVO_PWM_FREQ_HZ, SERVO_PWM_RES_BITS);
+    ledcAttachPin(JOINT_PIN[j], JOINT_CH[j]);
+
+    // Start each joint at a *known* angle (90 ° = neutral)
+    joints[j].currentDeg   = 90.0f;          // software believes we're at 90 °
+    joints[j].targetDeg    = 90.0f;          // same here → no immediate motion
+    joints[j].lastUpdateMs = millis();       // time‑stamp the “write”
+    writeServoRaw(j, 90.0f);                 // send the 90 ° PWM pulse now
+
+  }
+  const float TOL_DEG = 0.05f;         // tolerance for knowing if a servo is still moving
+  bool settling = true;
+  while (settling) {
+    updateServos();                    // one incremental step
+
+    // Check if any joint is still moving
+    settling = false;
+    for (uint8_t j = 0; j < JOINT_COUNT; ++j) {
+      if (fabsf(joints[j].currentDeg - joints[j].targetDeg) > TOL_DEG) {
+        settling = true;
+        break;
+      }
+    }
+    delay(5);                         
+  }
 }
 
 // --- Loop --- //
@@ -459,3 +552,64 @@ void verticalMotor_SetPower(int power) {
     ledcWrite(VERTICAL_REVERSE_CHANNEL, 0);
   }
 }
+
+static void writeServoRaw(Joint j, float deg) {
+  deg = clampDeg(deg);
+  uint16_t us  = angleToUs(j, deg);
+  uint32_t duty = usToDuty(us);
+  ledcWrite(JOINT_CH[j], duty);
+
+  //updates new joint state
+  joints[j].currentDeg   = deg;
+  joints[j].lastUpdateMs = millis();
+}
+
+void setJointTarget(Joint j, float deg) {
+  joints[j].targetDeg = clampDeg(deg);
+
+  // If this joint is configured for “immediate”, push the command right now instead of waiting for updateServos().
+  if (JOINT_SLEW_DEGPS[j] >= SPEED_IMMEDIATE_DEGPS) {
+    writeServoRaw(j, joints[j].targetDeg);
+  }
+}
+
+void setAllTargets(float baseDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg) {
+  setJointTarget(JOINT_BASE_ROT, baseDeg);
+  setJointTarget(JOINT_SHOULDER, shoulderDeg);
+  setJointTarget(JOINT_ELBOW,   elbowDeg);
+  setJointTarget(JOINT_WRIST,   wristDeg);
+  setJointTarget(JOINT_CLAW,    clawDeg);
+}
+
+void updateServos() {
+  uint32_t now = millis();
+
+  for (Joint j = 0; j < JOINT_COUNT; ++j) {
+    //Obtain slew speeds
+    float slew = JOINT_SLEW_DEGPS[j];
+    if (slew >= SPEED_IMMEDIATE_DEGPS) continue;        // instant‑move joint
+
+    //Compute elapsed time for this joint
+    uint32_t dtMs = now - joints[j].lastUpdateMs;       // time since last rewrite PWM for this joint.
+    if (dtMs == 0) continue;                            // loop raced
+
+    joints[j].lastUpdateMs = now; //update joint state
+
+    float currentAngle   = joints[j].currentDeg;        // last PWM angle
+    float targetAngle   = joints[j].targetDeg;          // target pwm angle
+    float delta = targetAngle - currentAngle;           // error
+    if (fabsf(delta) < 0.01f) continue;                 // already close
+
+    //How far this joint may move this frame (deg = slew * Δt)
+    float maxStep = slew * (dtMs / 1000.0f);
+
+
+    //Decides wether to snap ot step to the target angle
+    if (fabsf(delta) <= maxStep) {
+      writeServoRaw(j, targetAngle);                                      // snap to target
+    } else {
+      writeServoRaw(j, currentAngle + (delta > 0 ? maxStep : -maxStep));  // step
+    }
+  }
+}
+
