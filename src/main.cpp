@@ -59,7 +59,6 @@
 #define ARM_PWM_NUM_BITS 12
 
 // --- Variables --- //
-
 // Variables - State
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
