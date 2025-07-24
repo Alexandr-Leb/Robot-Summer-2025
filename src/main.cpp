@@ -205,7 +205,7 @@ void updateServos();
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::Initialize;
+  currentMasterState = MasterState::Test;
 
   // Variables - Time Control
   prevTimeRecord = 0;
@@ -347,23 +347,25 @@ void loop() {
     break;
 
     case MasterState::Test:
-    switch(currentProcedureState) {
-      case ProcedureState::TapeFollow:
-      runPID(1000);
-      if (!leftOnTape && !rightOnTape) {
-        currentProcedureState = ProcedureState::TapeFind;
-      }
-      break;
+    // switch(currentProcedureState) {
+    //   case ProcedureState::TapeFollow:
+    //   runPID(1000);
+    //   if (!leftOnTape && !rightOnTape) {
+    //     currentProcedureState = ProcedureState::TapeFind;
+    //   }
+    //   break;
 
-      case ProcedureState::TapeFind:
-      readReflectanceSensors();
-      runHysteresis(1000);
-      if (leftOnTape || rightOnTape) {
-        computePID();
-        currentProcedureState = ProcedureState::TapeFollow;
-      }
-      break;
-    }
+    //   case ProcedureState::TapeFind:
+    //   readReflectanceSensors();
+    //   runHysteresis(1000);
+    //   if (leftOnTape || rightOnTape) {
+    //     computePID();
+    //     currentProcedureState = ProcedureState::TapeFollow;
+    //   }
+    //   break;
+    // }
+    setAllTargets(90, 90, 90, 90, 90);
+    updateServos();
     break;
 
     case MasterState::Initialize:
