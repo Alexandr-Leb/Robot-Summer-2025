@@ -381,7 +381,7 @@ void loop() {
     //   currentMasterState = MasterState::Test;
     //   currentProcedureState = ProcedureState::TapeFollow;
     // }
-    verticalMotor_SetPower(-3000);
+    verticalMotor_SetPower(3000);
     break;
   }
 }
