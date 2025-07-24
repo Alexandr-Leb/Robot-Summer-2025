@@ -86,7 +86,7 @@ static const uint16_t JOINT_MAX_US[JOINT_COUNT] = {
 };
 
 #define SPEED_IMMEDIATE_DEGPS   10000.0f  // “jump now”
-#define SLEW_BASE_ROT           40.0f
+#define SLEW_BASE_ROT           20.0f
 #define SLEW_SHOULDER           40.0f
 #define SLEW_ELBOW              40.0f
 #define SLEW_WRIST              40.0f
@@ -192,9 +192,9 @@ int reflectanceAverageLoopCounter;
 
 // Run Time Constants
 // Run Time Constants - ClearDoorway
-#define DOORWAY_CLEAR_TIME 3500
+#define DOORWAY_CLEAR_TIME 5500
 #define ARM_DEPLOY_TIME 1000
-#define BAKSET_CLEAR_TIME 2000
+#define BAKSET_CLEAR_TIME 3000
 
 // Run Time Constants - Pet1
 #define PET1_ARM_DEPLOY_TIME 2000
@@ -203,6 +203,8 @@ double pet1_magnetometerSweepArray[2 * PET1_SWEEP_PM_ANGLE + 1];
 #define PET1_SWEEP_TIME 5000
 int pet1_searchTimePerDegree = PET1_SWEEP_TIME / (2 * PET1_SWEEP_PM_ANGLE + 1);
 int pet1_degreeIncrementCounter = 0;
+int maxMagnetometerValue = 0;
+int maxMagnetometerArmAngle;
 
 // --- Function Headers --- //
 void readMagnetometer();
@@ -222,13 +224,14 @@ void updateServos();
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::ClearDoorway;
+  currentMasterState = MasterState::Pet1;
   currentProcedureState = ProcedureState::PreState;
 
   // Variables - Time Control
   prevTimeRecord = 0;
 
   // Variables - Magnetometer
+  lis.begin_I2C();
   magnetometerMagnitude = 0.0;
   magnetometerMagnitudeSum = 0.0;
   magnetometerAverageCount = 0;
@@ -378,7 +381,7 @@ void loop() {
     case MasterState::Pet1:
     switch(currentProcedureState) {
       case ProcedureState::PreState:
-      setAllTargets(30, 60, 0, 0, 90);
+      setAllTargets(30, 60, 10, 5, 90);
       updateServos();
       if (millis() - prevTimeRecord > PET1_ARM_DEPLOY_TIME) {
         currentProcedureState = ProcedureState::PetSearch;
@@ -387,7 +390,7 @@ void loop() {
       break;
 
       case ProcedureState::PetSearch:
-      readMagetometer();
+      readMagnetometer();
       magnetometerMagnitudeSum += magnetometerMagnitude;
       magnetometerAverageCount++;
       if (millis() - prevTimeRecord > pet1_searchTimePerDegree) {
@@ -398,36 +401,41 @@ void loop() {
         writeServoRaw(0, 30 + pet1_degreeIncrementCounter);
         if (pet1_degreeIncrementCounter == 2 * PET1_SWEEP_PM_ANGLE + 1) {
           currentProcedureState = ProcedureState::PetGrab;
+          for (int degreeIncrement = 0; degreeIncrement < 2 * PET1_SWEEP_PM_ANGLE + 1; degreeIncrement++) {
+            if (pet1_magnetometerSweepArray[degreeIncrement] > maxMagnetometerValue) {
+              maxMagnetometerValue = pet1_magnetometerSweepArray[degreeIncrement];
+              maxMagnetometerArmAngle = 30 + degreeIncrement;
+            }
+          }
         }
         prevTimeRecord = millis();
       }
       break;
 
       case ProcedureState::PetGrab:
-      int maxMagnetometerValue = 0;
-      int maxMagnetometerArmAngle;
-      for (int degreeIncrement = 0; degreeIncrement < 2 * PET1_SWEEP_PM_ANGLE + 1; degreeIncrement++) {
-        if (pet1_magnetometerSweepArray[degreeIncrement] > maxMagnetometerValue) {
-          maxMagnetometerValue = pet1_magnetometerSweepArray[degreeIncrement];
-          maxMagnetometerArmAngle = 30 + degreeIncrement;
-        }
-      }
-      setAllTargets(30 + maxMagnetometerArmAngle, 60, 0, 0, 90);
+      setAllTargets(maxMagnetometerArmAngle, 60, 10, 5, 90);
       updateServos();
+      if (millis() - prevTimeRecord > 2000) {
+        currentProcedureState = ProcedureState::PostState;
+      }
+      break;
+
+      case ProcedureState::PostState:
+      delay(100000);
       break;
     }
     break;
 
-    case MasterState::ClimbRamp:
-    break;
+    // case MasterState::ClimbRamp:
+    // break;
 
-    case MasterState::Pet2:
-    break;
+    // case MasterState::Pet2:
+    // break;
 
-    case MasterState::Pet3:
-    break;
+    // case MasterState::Pet3:
+    // break;
 
-    case MasterState::Test:
+    // case MasterState::Test:
     // switch(currentProcedureState) {
     //   case ProcedureState::TapeFollow:
     //   runPID(1000);
@@ -445,24 +453,24 @@ void loop() {
     //   }
     //   break;
     // }
-    setAllTargets(90, 60, 0, 0, 90);
-    updateServos();
-    break;
+    // setAllTargets(90, 60, 0, 0, 90);
+    // updateServos();
+    // break;
 
-    case MasterState::Initialize:
-    verticalMotor_SetPower(-3000);
-    break;
+    // case MasterState::Initialize:
+    // verticalMotor_SetPower(-3000);
+    // break;
   }
 }
 
 // --- Function Definitions --- //
-void readMagetometer() {
+void readMagnetometer() {
   sensors_event_t event;
   lis.getEvent(&event);
   float x = event.magnetic.x;
   float y = event.magnetic.y;
   float z = event.magnetic.z;
-  magnetometerMagnitude = sqrt(x * x + y * y + z * z);
+  magnetometerMagnitude = (double) sqrt(x * x + y * y + z * z);
 }
 
 void readReflectanceSensors() {
