@@ -3,6 +3,9 @@
 #include "driver/adc.h"
 #include "driver/ledc.h"
 #include <math.h>
+#include <Wire.h>
+#include <Adafruit_LIS3MDL.h>
+#include <Adafruit_Sensor.h>
 
 // --- Pins --- //
 // Pins - Motors
@@ -69,6 +72,11 @@ ProcedureState currentProcedureState;
 // Variables - Time Control
 unsigned long prevTimeRecord;
 
+// Variables - Magnetometer
+Adafruit_LIS3MDL lis;
+const float threshold = 1.0;  // Minimum change to consider significant (uT)
+double magnetometerMagnitude;
+
 // Variables - Reflectance Sensor
 int leftReflectance;
 int rightReflectance;
@@ -108,6 +116,7 @@ int rightReflectanceThresholdSum;
 int reflectanceAverageLoopCounter;
 
 // --- Function Headers --- //
+void readMagnetometer();
 void readReflectanceSensors(); // Reads and computes hysteresis variables
 void computePID();
 void runPID(int power); // Power between 0 and 4095
@@ -123,6 +132,9 @@ void setup() {
 
   // Variables - Time Control
   prevTimeRecord = 0;
+
+  // Variables - Magnetometer
+  magnetometerMagnitude = 0.0;
 
   // Variables - Reflectance Sensors
   leftReflectance = 0;
@@ -276,6 +288,15 @@ void loop() {
 }
 
 // --- Function Definitions --- //
+void readMagetometer() {
+  sensors_event_t event;
+  lis.getEvent(&event);
+  float x = event.magnetic.x;
+  float y = event.magnetic.y;
+  float z = event.magnetic.z;
+  magnetometerMagnitude = sqrt(x * x + y * y + z * z);
+}
+
 void readReflectanceSensors() {
   leftReflectance = adc1_get_raw(LEFT_REFLECTANCE_PIN);
   rightReflectance = adc1_get_raw(RIGHT_REFLECTANCE_PIN);
