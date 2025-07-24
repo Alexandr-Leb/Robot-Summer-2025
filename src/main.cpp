@@ -295,6 +295,8 @@ void setup() {
     }
     delay(5);                         
   }
+
+  Serial.begin(115200);
 }
 
 // --- Loop --- //
@@ -364,20 +366,21 @@ void loop() {
     //   }
     //   break;
     // }
-    setAllTargets(90, 90, 90, 90, 90);
-    updateServos();
+
+    Serial.printf("%d | %d\n", adc1_get_raw(LEFT_REFLECTANCE_PIN), adc1_get_raw(RIGHT_REFLECTANCE_PIN));
+
     break;
 
     case MasterState::Initialize:
-    leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
-    rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
-    reflectanceAverageLoopCounter++;
-    if (millis() > 500) {
-      leftReflectanceThreshold = (int) (leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
-      rightReflectanceThreshold = (int) (rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
-      currentMasterState = MasterState::Test;
-      currentProcedureState = ProcedureState::TapeFollow;
-    }
+    // leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
+    // rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+    // reflectanceAverageLoopCounter++;
+    // if (millis() > 500) {
+    //   leftReflectanceThreshold = (int) (leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+    //   rightReflectanceThreshold = (int) (rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+    //   currentMasterState = MasterState::Test;
+    //   currentProcedureState = ProcedureState::TapeFollow;
+    // }
     break;
   }
 }
