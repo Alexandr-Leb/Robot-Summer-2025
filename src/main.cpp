@@ -189,7 +189,7 @@ int rightReflectanceThresholdSum;
 int reflectanceAverageLoopCounter;
 
 // Run Time Constants
-#define DOORWAY_CLEAR_TIME 4000
+#define DOORWAY_CLEAR_TIME 3500
 #define ARM_DEPLOY_TIME 1000
 #define BAKSET_LIFT_TIME 2000
 
@@ -327,6 +327,8 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFind;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        leftMotor_SetPower(0);
+        rightMotor_SetPower(0);
         currentProcedureState = ProcedureState::PostState;
         prevTimeRecord = millis();
       }
@@ -340,27 +342,31 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFollow;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        leftMotor_SetPower(0);
+        rightMotor_SetPower(0);
         currentProcedureState = ProcedureState::PostState;
         prevTimeRecord = millis();
       }
       break;
 
       case ProcedureState::PostState:
-      leftMotor_SetPower(0);
-      rightMotor_SetPower(0);
       verticalMotor_SetPower(2500);
       if (millis() - prevTimeRecord > BAKSET_LIFT_TIME) {
         verticalMotor_SetPower(0);
         currentMasterState = MasterState::Pet1;
         currentProcedureState = ProcedureState::PetSearch;
+        prevTimeRecord = millis();
       }
       break;
     }
     break;
 
     case MasterState::Pet1:
-    setAllTargets(30, 60, 0, 0, 90);
-    updateServos();
+    switch(currentProcedureState) {
+      case ProcedureState::PetSearch:
+      setAllTargets(30, 60, 0, 0, 90);
+      updateServos();
+    }
     break;
 
     case MasterState::ClimbRamp:
