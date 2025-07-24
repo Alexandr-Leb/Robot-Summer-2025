@@ -139,7 +139,7 @@ using Joint = uint8_t;
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
-enum ProcedureState {TapeFollow, TapeFind, PetSearch, Intermediate};
+enum ProcedureState {TapeFollow, TapeFind, PetSearch, PreState, PostState};
 ProcedureState currentProcedureState;
 
 // Variables - Time Control
@@ -188,6 +188,11 @@ int leftReflectanceThresholdSum;
 int rightReflectanceThresholdSum;
 int reflectanceAverageLoopCounter;
 
+// Run Time Constants
+#define DOORWAY_CLEAR_TIME 4000
+#define ARM_DEPLOY_TIME 1000
+#define BAKSET_LIFT_TIME 2000
+
 // --- Function Headers --- //
 void readMagnetometer();
 void readReflectanceSensors(); // Reads and computes hysteresis variables
@@ -205,7 +210,8 @@ void updateServos();
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::Initialize;
+  currentMasterState = MasterState::ClearDoorway;
+  currentProcedureState = ProcedureState::PreState;
 
   // Variables - Time Control
   prevTimeRecord = 0;
@@ -248,6 +254,10 @@ void setup() {
   leftReflectanceThresholdSum = 0;
   rightReflectanceThresholdSum = 0;
   reflectanceAverageLoopCounter = 0;
+
+  // Variables - PRE CALIBRATION
+  leftReflectanceThreshold = 2900;
+  rightReflectanceThreshold = 2900;
 
   // Reflectance Sensor Analog Input Setup
   adc1_config_width(ADC_WIDTH_12Bit);
@@ -295,8 +305,6 @@ void setup() {
     }
     delay(5);                         
   }
-
-  Serial.begin(115200);
 }
 
 // --- Loop --- //
@@ -304,10 +312,23 @@ void loop() {
   switch(currentMasterState) {
     case MasterState::ClearDoorway:
     switch(currentProcedureState) {
+      case ProcedureState::PreState:
+      setAllTargets(90, 60, 0, 0, 90);
+      updateServos();
+      if (millis() - prevTimeRecord > ARM_DEPLOY_TIME) {
+        currentProcedureState = ProcedureState::TapeFollow;
+        prevTimeRecord = millis();
+      }
+      break;
+
       case ProcedureState::TapeFollow:
       runPID(1000);
       if (!leftOnTape && !rightOnTape) {
         currentProcedureState = ProcedureState::TapeFind;
+      }
+      if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        currentProcedureState = ProcedureState::PostState;
+        prevTimeRecord = millis();
       }
       break;
 
@@ -318,25 +339,28 @@ void loop() {
         computePID();
         currentProcedureState = ProcedureState::TapeFollow;
       }
+      if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        currentProcedureState = ProcedureState::PostState;
+        prevTimeRecord = millis();
+      }
       break;
 
-      case ProcedureState::Intermediate:
+      case ProcedureState::PostState:
       leftMotor_SetPower(0);
       rightMotor_SetPower(0);
       verticalMotor_SetPower(2500);
-      if (millis() - prevTimeRecord > 3000 /* Time to lift basket */) {
+      if (millis() - prevTimeRecord > BAKSET_LIFT_TIME) {
+        verticalMotor_SetPower(0);
         currentMasterState = MasterState::Pet1;
         currentProcedureState = ProcedureState::PetSearch;
       }
       break;
     }
-    if (millis() - prevTimeRecord > 3000 /* Time to clear doorway */) {
-      currentProcedureState = ProcedureState::Intermediate;
-      prevTimeRecord = millis();
-    }
     break;
 
     case MasterState::Pet1:
+    setAllTargets(30, 60, 0, 0, 90);
+    updateServos();
     break;
 
     case MasterState::ClimbRamp:
@@ -367,8 +391,8 @@ void loop() {
     //   break;
     // }
 
-    Serial.printf("%d | %d\n", adc1_get_raw(LEFT_REFLECTANCE_PIN), adc1_get_raw(RIGHT_REFLECTANCE_PIN));
-
+    setAllTargets(90, 60, 0, 0, 90);
+    updateServos();
     break;
 
     case MasterState::Initialize:
@@ -381,7 +405,7 @@ void loop() {
     //   currentMasterState = MasterState::Test;
     //   currentProcedureState = ProcedureState::TapeFollow;
     // }
-    verticalMotor_SetPower(3000);
+    verticalMotor_SetPower(-3000);
     break;
   }
 }
@@ -618,4 +642,3 @@ void updateServos() {
     }
   }
 }
-
