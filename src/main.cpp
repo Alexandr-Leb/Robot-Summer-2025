@@ -381,7 +381,7 @@ void loop() {
     case MasterState::Pet1:
     switch(currentProcedureState) {
       case ProcedureState::PreState:
-      setAllTargets(30, 60, 10, 5, 90);
+      setAllTargets(30, 120, 30, 40, 90);
       updateServos();
       if (millis() - prevTimeRecord > PET1_ARM_DEPLOY_TIME) {
         currentProcedureState = ProcedureState::PetSearch;
@@ -413,7 +413,7 @@ void loop() {
       break;
 
       case ProcedureState::PetGrab:
-      setAllTargets(maxMagnetometerArmAngle, 60, 10, 5, 90);
+      setAllTargets(maxMagnetometerArmAngle, 120, 30, 40, 90);
       updateServos();
       if (millis() - prevTimeRecord > 2000) {
         currentProcedureState = ProcedureState::PostState;
@@ -457,9 +457,10 @@ void loop() {
     // updateServos();
     // break;
 
-    // case MasterState::Initialize:
-    // verticalMotor_SetPower(-3000);
-    // break;
+    case MasterState::Initialize:
+    setAllTargets(60, 120, 30, 40, 90);
+    updateServos();
+    break;
   }
 }
 
