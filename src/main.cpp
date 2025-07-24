@@ -189,13 +189,18 @@ int rightReflectanceThresholdSum;
 int reflectanceAverageLoopCounter;
 
 // Run Time Constants
+// Run Time Constants - ClearDoorway
 #define DOORWAY_CLEAR_TIME 3500
 #define ARM_DEPLOY_TIME 1000
-#define BAKSET_LIFT_TIME 2000
+#define BAKSET_CLEAR_TIME 2000
+
+// Run Time Constants - Pet1
+#define PET1_ARM_DEPLOY_TIME 1000
 
 // --- Function Headers --- //
 void readMagnetometer();
 void readReflectanceSensors(); // Reads and computes hysteresis variables
+void initializeReflectanceSensors(int time); // time in ms
 void computePID();
 void runPID(int power); // Power between 0 and 4095
 void runHysteresis(int power);
@@ -351,10 +356,10 @@ void loop() {
 
       case ProcedureState::PostState:
       verticalMotor_SetPower(2500);
-      if (millis() - prevTimeRecord > BAKSET_LIFT_TIME) {
+      if (millis() - prevTimeRecord > BAKSET_CLEAR_TIME) {
         verticalMotor_SetPower(0);
         currentMasterState = MasterState::Pet1;
-        currentProcedureState = ProcedureState::PetSearch;
+        currentProcedureState = ProcedureState::PreState;
         prevTimeRecord = millis();
       }
       break;
@@ -363,9 +368,17 @@ void loop() {
 
     case MasterState::Pet1:
     switch(currentProcedureState) {
-      case ProcedureState::PetSearch:
+      case ProcedureState::PreState:
       setAllTargets(30, 60, 0, 0, 90);
       updateServos();
+      if (millis() - prevTimeRecord > PET1_ARM_DEPLOY_TIME) {
+        currentProcedureState = ProcedureState::PetSearch;
+        prevTimeRecord = millis();
+      }
+      break;
+
+      case ProcedureState::PetSearch:
+      break;
     }
     break;
 
@@ -396,21 +409,11 @@ void loop() {
     //   }
     //   break;
     // }
-
     setAllTargets(90, 60, 0, 0, 90);
     updateServos();
     break;
 
     case MasterState::Initialize:
-    // leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
-    // rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
-    // reflectanceAverageLoopCounter++;
-    // if (millis() > 500) {
-    //   leftReflectanceThreshold = (int) (leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
-    //   rightReflectanceThreshold = (int) (rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
-    //   currentMasterState = MasterState::Test;
-    //   currentProcedureState = ProcedureState::TapeFollow;
-    // }
     verticalMotor_SetPower(-3000);
     break;
   }
@@ -435,6 +438,17 @@ void readReflectanceSensors() {
   prevRightOnTape = rightOnTape;
   leftOnTape = (leftReflectance > leftReflectanceThreshold);
   rightOnTape = (rightReflectance > rightReflectanceThreshold);
+}
+
+void initializeReflectanceSensors(int time) {
+  int startTime = millis();
+  while (millis() - startTime < time) {
+    leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
+    rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+    reflectanceAverageLoopCounter++;
+  }
+  leftReflectanceThreshold = (int) (leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+  rightReflectanceThreshold = (int) (rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
 }
 
 void computePID() {
