@@ -139,7 +139,7 @@ using Joint = uint8_t;
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
-enum ProcedureState {TapeFollow, TapeFind, PetSearch, PreState, PostState};
+enum ProcedureState {TapeFollow, TapeFind, PetSearch, PetGrab, PreState, PostState};
 ProcedureState currentProcedureState;
 
 // Variables - Time Control
@@ -149,6 +149,8 @@ unsigned long prevTimeRecord;
 Adafruit_LIS3MDL lis;
 const float threshold = 1.0;  // Minimum change to consider significant (uT)
 double magnetometerMagnitude;
+double magnetometerMagnitudeSum;
+int magnetometerAverageCount;
 
 // Variables - Reflectance Sensor
 int leftReflectance;
@@ -195,7 +197,12 @@ int reflectanceAverageLoopCounter;
 #define BAKSET_CLEAR_TIME 2000
 
 // Run Time Constants - Pet1
-#define PET1_ARM_DEPLOY_TIME 1000
+#define PET1_ARM_DEPLOY_TIME 2000
+#define PET1_SWEEP_PM_ANGLE 20
+double pet1_magnetometerSweepArray[2 * PET1_SWEEP_PM_ANGLE + 1];
+#define PET1_SWEEP_TIME 5000
+int pet1_searchTimePerDegree = PET1_SWEEP_TIME / (2 * PET1_SWEEP_PM_ANGLE + 1);
+int pet1_degreeIncrementCounter = 0;
 
 // --- Function Headers --- //
 void readMagnetometer();
@@ -223,6 +230,8 @@ void setup() {
 
   // Variables - Magnetometer
   magnetometerMagnitude = 0.0;
+  magnetometerMagnitudeSum = 0.0;
+  magnetometerAverageCount = 0;
 
   // Variables - Reflectance Sensors
   leftReflectance = 0;
@@ -378,6 +387,33 @@ void loop() {
       break;
 
       case ProcedureState::PetSearch:
+      readMagetometer();
+      magnetometerMagnitudeSum += magnetometerMagnitude;
+      magnetometerAverageCount++;
+      if (millis() - prevTimeRecord > pet1_searchTimePerDegree) {
+        pet1_magnetometerSweepArray[pet1_degreeIncrementCounter] = magnetometerMagnitudeSum / magnetometerAverageCount;
+        magnetometerMagnitudeSum = 0.0;
+        magnetometerAverageCount = 0;
+        pet1_degreeIncrementCounter++;
+        writeServoRaw(0, 30 + pet1_degreeIncrementCounter);
+        if (pet1_degreeIncrementCounter == 2 * PET1_SWEEP_PM_ANGLE + 1) {
+          currentProcedureState = ProcedureState::PetGrab;
+        }
+        prevTimeRecord = millis();
+      }
+      break;
+
+      case ProcedureState::PetGrab:
+      int maxMagnetometerValue = 0;
+      int maxMagnetometerArmAngle;
+      for (int degreeIncrement = 0; degreeIncrement < 2 * PET1_SWEEP_PM_ANGLE + 1; degreeIncrement++) {
+        if (pet1_magnetometerSweepArray[degreeIncrement] > maxMagnetometerValue) {
+          maxMagnetometerValue = pet1_magnetometerSweepArray[degreeIncrement];
+          maxMagnetometerArmAngle = 30 + degreeIncrement;
+        }
+      }
+      setAllTargets(30 + maxMagnetometerArmAngle, 60, 0, 0, 90);
+      updateServos();
       break;
     }
     break;
