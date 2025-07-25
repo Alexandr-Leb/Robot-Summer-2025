@@ -141,13 +141,14 @@ using Joint = uint8_t;
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
 #define MOTOR_PWM_NUM_BITS 12
 #define MOTOR_SWITCH_TIME 5 // in us
+#define MOTOR_STOP_CORRECTION 3;
 
 // --- Variables --- //
 // Variables - State
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
-enum ProcedureState {TapeFollow, TapeFind, PetSearch, PetReach, PetGrab, PreState, PostState};
+enum ProcedureState {TapeFollow, TapeFind, Stop, PetSearch, PetReach, PetGrab, PreState, PostState};
 ProcedureState currentProcedureState;
 
 // Variables - Time Control
@@ -171,6 +172,7 @@ int rightMotorPrev;
 unsigned long rightTimeSwitch; // in us
 int verticalMotorPrev;
 unsigned long verticalTimeSwitch; // in us
+int stopPower;
 
 // Variables - PID
 double k_p;
@@ -202,6 +204,8 @@ int reflectanceAverageLoopCounter;
 // Run Time Constants - ClearDoorway
 #define DOORWAY_CLEAR_TIME 5500
 #define ARM_DEPLOY_TIME 2000
+#define DOORWAY_STOP_TIME 1000
+#define DOORWAY_STOP_NUM_INCREMENTS 5
 #define BAKSET_CLEAR_TIME 3000
 
 // Run Time Constants - Pet1
@@ -230,7 +234,6 @@ void runHysteresis(int power);
 void rightMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void leftMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void verticalMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
-void allStop();
 
 // Servo FUnctions
 static void writeServoRaw(Joint j, float deg);
@@ -379,13 +382,26 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFollow;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
-        leftMotor_SetPower(-1000);
-        rightMotor_SetPower(-1000);
-        delay(200);
-        leftMotor_SetPower(0);
-        rightMotor_SetPower(0);
-        currentProcedureState = ProcedureState::PostState;
+        currentProcedureState = ProcedureState::Stop;
+        stopPower = 800;
         prevTimeRecord = millis();
+      }
+      break;
+
+      case ProcedureState::Stop:
+      if (millis() - prevTimeRecord > DOORWAY_STOP_TIME / DOORWAY_STOP_NUM_INCREMENTS) {
+        stopPower -= 200;
+        readReflectanceSensors();
+        computePID();
+        if (stopPower > 0) {
+          leftMotor_SetPower((int) ((stopPower + pValue + dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
+          rightMotor_SetPower((int) ((stopPower - pValue - dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
+          prevTimeRecord = millis();
+        } else {
+          leftMotor_SetPower(0);
+          rightMotor_SetPower(0);
+          currentProcedureState = ProcedureState::PostState;
+        }
       }
       break;
 
@@ -500,7 +516,7 @@ void loop() {
     // break;
 
     case MasterState::Initialize:
-    setAllTargets(90, 80, 5, 0, 90);
+    setAllTargets(10, 80, 0, 0, 90);
     updateServos();
     break;
   }
@@ -776,5 +792,3 @@ double computeElbowAngle(double shoulderAngle, double height) {
 double computeWristAngle(double shoulderAngle, double elbowAngle, double height) {
   return 180 - shoulderAngle - SHOULDER_OFFSET_ANGLE + elbowAngle + ELBOW_OFFSET_ANGLE - WRIST_OFFSET_ANGLE;
 }
-
-void allStop();
