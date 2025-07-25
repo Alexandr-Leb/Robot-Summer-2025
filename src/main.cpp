@@ -389,15 +389,13 @@ void loop() {
       break;
 
       case ProcedureState::Stop:
+      readReflectanceSensors();
+      computePID();
+      leftMotor_SetPower((int) (stopPower + (pValue + dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
+      rightMotor_SetPower((int) (stopPower + (-pValue - dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
       if (millis() - prevTimeRecord > DOORWAY_STOP_TIME / DOORWAY_STOP_NUM_INCREMENTS) {
         stopPower -= 200;
-        readReflectanceSensors();
-        computePID();
-        if (stopPower > 0) {
-          leftMotor_SetPower((int) ((stopPower + pValue + dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
-          rightMotor_SetPower((int) ((stopPower - pValue - dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
-          prevTimeRecord = millis();
-        } else {
+        if (stopPower <= 0) {
           leftMotor_SetPower(0);
           rightMotor_SetPower(0);
           currentProcedureState = ProcedureState::PostState;
