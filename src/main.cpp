@@ -141,7 +141,7 @@ using Joint = uint8_t;
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
 #define MOTOR_PWM_NUM_BITS 12
 #define MOTOR_SWITCH_TIME 5 // in us
-#define MOTOR_STOP_CORRECTION 3;
+#define MOTOR_STOP_CORRECTION 3
 
 // --- Variables --- //
 // Variables - State
