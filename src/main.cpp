@@ -121,25 +121,33 @@ static inline uint32_t usToDuty(uint16_t us) {
 
 using Joint = uint8_t;
 
+// Constants - Arm Lengths
+#define BICEP_LENGTH 132.446
+#define FOREARM_LENGTH 105.641
+
+// Constants - Arm Offsets
+#define SHOULDER_OFFSET_ANGLE 10
+#define ELBOW_OFFSET_ANGLE 27 // From 37, decreasing brings elbow up
+#define WRIST_OFFSET_ANGLE 70 // From 70, increasing brings wrist up
+
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
 #define HYSTERESIS_MULTIPLIER 50
+
+// Constants - Magnetometer
+#define MAGNETOMETER_THRESHOLD 260
 
 // Constants - Motors
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
 #define MOTOR_PWM_NUM_BITS 12
 #define MOTOR_SWITCH_TIME 5 // in us
 
-// Constants - Arm
-#define ARM_PWM_FREQUENCY 50 //in Hz
-#define ARM_PWM_NUM_BITS 12
-
 // --- Variables --- //
 // Variables - State
 enum MasterState {Initialize, Test, ClearDoorway, Pet1, ClimbRamp, Pet2, Pet3};
 MasterState currentMasterState;
 
-enum ProcedureState {TapeFollow, TapeFind, PetSearch, PetGrab, PreState, PostState};
+enum ProcedureState {TapeFollow, TapeFind, PetSearch, PetReach, PetGrab, PreState, PostState};
 ProcedureState currentProcedureState;
 
 // Variables - Time Control
@@ -193,38 +201,50 @@ int reflectanceAverageLoopCounter;
 // Run Time Constants
 // Run Time Constants - ClearDoorway
 #define DOORWAY_CLEAR_TIME 5500
-#define ARM_DEPLOY_TIME 1000
+#define ARM_DEPLOY_TIME 2000
 #define BAKSET_CLEAR_TIME 3000
 
 // Run Time Constants - Pet1
 #define PET1_ARM_DEPLOY_TIME 2000
-#define PET1_SWEEP_PM_ANGLE 20
+#define PET1_SWEEP_PM_ANGLE 30
 double pet1_magnetometerSweepArray[2 * PET1_SWEEP_PM_ANGLE + 1];
 #define PET1_SWEEP_TIME 5000
 int pet1_searchTimePerDegree = PET1_SWEEP_TIME / (2 * PET1_SWEEP_PM_ANGLE + 1);
 int pet1_degreeIncrementCounter = 0;
 int maxMagnetometerValue = 0;
 int maxMagnetometerArmAngle;
+float newShoulderTarget;
+float newElbowTarget;
+float newWristTarget;
 
 // --- Function Headers --- //
+// Sensor Functions
 void readMagnetometer();
 void readReflectanceSensors(); // Reads and computes hysteresis variables
 void initializeReflectanceSensors(int time); // time in ms
+
+// Drivetrain Functions
 void computePID();
 void runPID(int power); // Power between 0 and 4095
 void runHysteresis(int power);
 void rightMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void leftMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void verticalMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
+void allStop();
+
+// Servo FUnctions
 static void writeServoRaw(Joint j, float deg);
 void setJointTarget(Joint j, float deg);
 void setAllTargets(float baseDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg);
 void updateServos();
+void waitForServos();
+double computeElbowAngle(double shoulderAngle, double height);
+double computeWristAngle(double shoulderAngle, double elbowAngle, double height);
 
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::Pet1;
+  currentMasterState = MasterState::ClearDoorway;
   currentProcedureState = ProcedureState::PreState;
 
   // Variables - Time Control
@@ -330,7 +350,7 @@ void loop() {
     case MasterState::ClearDoorway:
     switch(currentProcedureState) {
       case ProcedureState::PreState:
-      setAllTargets(90, 60, 0, 0, 90);
+      setAllTargets(90, 80, 5, 0, 90);
       updateServos();
       if (millis() - prevTimeRecord > ARM_DEPLOY_TIME) {
         currentProcedureState = ProcedureState::TapeFollow;
@@ -359,6 +379,9 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFollow;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        leftMotor_SetPower(-1000);
+        rightMotor_SetPower(-1000);
+        delay(200);
         leftMotor_SetPower(0);
         rightMotor_SetPower(0);
         currentProcedureState = ProcedureState::PostState;
@@ -381,7 +404,7 @@ void loop() {
     case MasterState::Pet1:
     switch(currentProcedureState) {
       case ProcedureState::PreState:
-      setAllTargets(30, 120, 30, 40, 90);
+      setAllTargets(30, 120, 30, 40, 100);
       updateServos();
       if (millis() - prevTimeRecord > PET1_ARM_DEPLOY_TIME) {
         currentProcedureState = ProcedureState::PetSearch;
@@ -400,24 +423,43 @@ void loop() {
         pet1_degreeIncrementCounter++;
         writeServoRaw(0, 30 + pet1_degreeIncrementCounter);
         if (pet1_degreeIncrementCounter == 2 * PET1_SWEEP_PM_ANGLE + 1) {
-          currentProcedureState = ProcedureState::PetGrab;
+          currentProcedureState = ProcedureState::PetReach;
           for (int degreeIncrement = 0; degreeIncrement < 2 * PET1_SWEEP_PM_ANGLE + 1; degreeIncrement++) {
             if (pet1_magnetometerSweepArray[degreeIncrement] > maxMagnetometerValue) {
               maxMagnetometerValue = pet1_magnetometerSweepArray[degreeIncrement];
               maxMagnetometerArmAngle = 30 + degreeIncrement;
             }
           }
+          setAllTargets(maxMagnetometerArmAngle, 120, 30, 40, 100);
+          updateServos();
+          waitForServos();
         }
         prevTimeRecord = millis();
       }
       break;
 
-      case ProcedureState::PetGrab:
-      setAllTargets(maxMagnetometerArmAngle, 120, 30, 40, 90);
-      updateServos();
-      if (millis() - prevTimeRecord > 2000) {
-        currentProcedureState = ProcedureState::PostState;
+      case ProcedureState::PetReach:
+      newShoulderTarget = joints[1].currentDeg + 1;
+      newElbowTarget = computeElbowAngle(newShoulderTarget, 35);
+      newWristTarget = computeWristAngle(newShoulderTarget, newElbowTarget, 35);
+      setAllTargets(joints[0].currentDeg, newShoulderTarget, newElbowTarget, newWristTarget, joints[4].currentDeg);
+      waitForServos();
+      readMagnetometer();
+      if (magnetometerMagnitude > MAGNETOMETER_THRESHOLD) {
+        currentProcedureState = ProcedureState::PetGrab;
       }
+      if (newShoulderTarget > 160) {
+        delay(100000);
+      }
+      break;
+
+      case ProcedureState::PetGrab:
+      setJointTarget(4, 5);
+      delay(800);
+      waitForServos();
+      setJointTarget(2, 130);
+      waitForServos();
+      currentProcedureState = ProcedureState:: PostState;
       break;
 
       case ProcedureState::PostState:
@@ -458,7 +500,7 @@ void loop() {
     // break;
 
     case MasterState::Initialize:
-    setAllTargets(60, 120, 30, 40, 90);
+    setAllTargets(90, 80, 5, 0, 90);
     updateServos();
     break;
   }
@@ -707,3 +749,32 @@ void updateServos() {
     }
   }
 }
+
+void waitForServos() {
+  const float TOL_DEG = 0.05f;         // tolerance for knowing if a servo is still moving
+  bool settling = true;
+  while (settling) {
+    updateServos();                    // one incremental step
+
+    // Check if any joint is still moving
+    settling = false;
+    for (uint8_t j = 0; j < JOINT_COUNT; ++j) {
+      if (fabsf(joints[j].currentDeg - joints[j].targetDeg) > TOL_DEG) {
+        settling = true;
+        break;
+      }
+    }
+    delay(5);                         
+  }
+}
+
+double computeElbowAngle(double shoulderAngle, double height) {
+  return shoulderAngle + SHOULDER_OFFSET_ANGLE - ELBOW_OFFSET_ANGLE
+  - asin((BICEP_LENGTH * sin(PI / 180.0 * (180 - shoulderAngle - SHOULDER_OFFSET_ANGLE)) - height) / FOREARM_LENGTH) * 180.0 / PI;
+}
+
+double computeWristAngle(double shoulderAngle, double elbowAngle, double height) {
+  return 180 - shoulderAngle - SHOULDER_OFFSET_ANGLE + elbowAngle + ELBOW_OFFSET_ANGLE - WRIST_OFFSET_ANGLE;
+}
+
+void allStop();
