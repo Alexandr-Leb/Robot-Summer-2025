@@ -127,7 +127,7 @@ using Joint = uint8_t;
 
 // Constants - Arm Offsets
 #define SHOULDER_OFFSET_ANGLE 10
-#define ELBOW_OFFSET_ANGLE 27 // From 37, decreasing brings elbow up
+#define ELBOW_OFFSET_ANGLE 30 // From 37, decreasing brings elbow up
 #define WRIST_OFFSET_ANGLE 70 // From 70, increasing brings wrist up
 
 // Constants - Tape Following
@@ -141,7 +141,7 @@ using Joint = uint8_t;
 #define MOTOR_PWM_FREQUENCY 120 // in Hz
 #define MOTOR_PWM_NUM_BITS 12
 #define MOTOR_SWITCH_TIME 5 // in us
-#define MOTOR_STOP_CORRECTION 3
+#define MOTOR_STOP_CORRECTION 1.5
 
 // --- Variables --- //
 // Variables - State
@@ -202,7 +202,7 @@ int reflectanceAverageLoopCounter;
 
 // Run Time Constants
 // Run Time Constants - ClearDoorway
-#define DOORWAY_CLEAR_TIME 5500
+#define DOORWAY_CLEAR_TIME 3950
 #define ARM_DEPLOY_TIME 2000
 #define DOORWAY_STOP_TIME 1000
 #define DOORWAY_STOP_NUM_INCREMENTS 5
@@ -220,6 +220,9 @@ int maxMagnetometerArmAngle;
 float newShoulderTarget;
 float newElbowTarget;
 float newWristTarget;
+
+// Run Time Constants - ClimbRamp
+#define RAMP_FIND_TIME 5000
 
 // --- Function Headers --- //
 // Sensor Functions
@@ -367,9 +370,12 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFind;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
+        // currentProcedureState = ProcedureState::Stop;
+        // stopPower = 800;
+        // prevTimeRecord = millis();
+        currentProcedureState = ProcedureState::PostState;
         leftMotor_SetPower(0);
         rightMotor_SetPower(0);
-        currentProcedureState = ProcedureState::PostState;
         prevTimeRecord = millis();
       }
       break;
@@ -382,26 +388,32 @@ void loop() {
         currentProcedureState = ProcedureState::TapeFollow;
       }
       if (millis() - prevTimeRecord > DOORWAY_CLEAR_TIME) {
-        currentProcedureState = ProcedureState::Stop;
-        stopPower = 800;
+      //   currentProcedureState = ProcedureState::Stop;
+      //   stopPower = 800;
+      //   prevTimeRecord = millis();
+        currentProcedureState = ProcedureState::PostState;
+        leftMotor_SetPower(0);
+        rightMotor_SetPower(0);
         prevTimeRecord = millis();
       }
       break;
 
-      case ProcedureState::Stop:
-      readReflectanceSensors();
-      computePID();
-      leftMotor_SetPower((int) (stopPower + (pValue + dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
-      rightMotor_SetPower((int) (stopPower + (-pValue - dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
-      if (millis() - prevTimeRecord > DOORWAY_STOP_TIME / DOORWAY_STOP_NUM_INCREMENTS) {
-        stopPower -= 200;
-        if (stopPower <= 0) {
-          leftMotor_SetPower(0);
-          rightMotor_SetPower(0);
-          currentProcedureState = ProcedureState::PostState;
-        }
-      }
-      break;
+      // case ProcedureState::Stop:
+      // if (millis() - prevTimeRecord > DOORWAY_STOP_TIME / DOORWAY_STOP_NUM_INCREMENTS) {
+      //   stopPower -= 200;
+      //   readReflectanceSensors();
+      //   computePID();
+      //   if (stopPower > 0) {
+      //     leftMotor_SetPower((int) ((stopPower + pValue + dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
+      //     rightMotor_SetPower((int) ((stopPower - pValue - dValue - abs(eValue)) * MOTOR_STOP_CORRECTION));
+      //   } else {
+      //     leftMotor_SetPower(0);
+      //     rightMotor_SetPower(0);
+      //     currentProcedureState = ProcedureState::PostState;
+      //   }
+      //   prevTimeRecord = millis();
+      // }
+      // break;
 
       case ProcedureState::PostState:
       verticalMotor_SetPower(2500);
@@ -409,6 +421,9 @@ void loop() {
         verticalMotor_SetPower(0);
         currentMasterState = MasterState::Pet1;
         currentProcedureState = ProcedureState::PreState;
+        setJointTarget(0, 30);
+        updateServos();
+        delay(1000);
         prevTimeRecord = millis();
       }
       break;
@@ -462,28 +477,77 @@ void loop() {
       if (magnetometerMagnitude > MAGNETOMETER_THRESHOLD) {
         currentProcedureState = ProcedureState::PetGrab;
       }
-      if (newShoulderTarget > 160) {
-        delay(100000);
+      if (newShoulderTarget > 120) {
+        currentProcedureState = ProcedureState::PetGrab;
       }
       break;
 
       case ProcedureState::PetGrab:
       setJointTarget(4, 5);
+      waitForServos();
       delay(800);
+      setAllTargets(175, 80, 5, 0, 5);
       waitForServos();
-      setJointTarget(2, 130);
-      waitForServos();
-      currentProcedureState = ProcedureState:: PostState;
+      delay(3000);
+      currentProcedureState = ProcedureState::PostState;
+      prevTimeRecord = millis();
       break;
 
       case ProcedureState::PostState:
-      delay(100000);
+      currentMasterState = MasterState::ClimbRamp;
+      currentProcedureState = ProcedureState::PreState;
       break;
     }
     break;
 
-    // case MasterState::ClimbRamp:
-    // break;
+    case MasterState::ClimbRamp:
+    switch(currentProcedureState) {
+      case PreState:
+      readReflectanceSensors();
+      leftMotor_SetPower(-800);
+      rightMotor_SetPower(-800);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      break;
+
+      case TapeFollow:
+      runPID(1000);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = ProcedureState::TapeFind;
+      }
+      if (millis() - prevTimeRecord > RAMP_FIND_TIME) {
+        leftMotor_SetPower(0);
+        rightMotor_SetPower(0);
+        currentProcedureState = ProcedureState::PostState;
+      }
+      break;
+
+      case TapeFind:
+      readReflectanceSensors();
+      runHysteresis(1000);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      if (millis() - prevTimeRecord > RAMP_FIND_TIME) {
+        leftMotor_SetPower(0);
+        rightMotor_SetPower(0);
+        currentProcedureState = ProcedureState::PostState;
+      }
+      break;
+
+      case PostState:
+      setAllTargets(175, 120, 30, 40, 100);
+      waitForServos();
+      delay(3000);
+      setJointTarget(4, 90);
+      waitForServos();
+      delay(1000000);
+      break;
+    }
+    break;
 
     // case MasterState::Pet2:
     // break;
@@ -514,7 +578,7 @@ void loop() {
     // break;
 
     case MasterState::Initialize:
-    setAllTargets(10, 80, 0, 0, 90);
+    setAllTargets(0, 80, 0, 50, 90);
     updateServos();
     break;
   }
