@@ -130,6 +130,9 @@ using Joint = uint8_t;
 #define ELBOW_OFFSET_ANGLE 30 // From 37, decreasing brings elbow up
 #define WRIST_OFFSET_ANGLE 70 // From 70, increasing brings wrist up
 
+// Constants - Arm Setup
+double startingArmAngles[] = {90, 90, 0, 40, 90};
+
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
 #define HYSTERESIS_MULTIPLIER 50
@@ -250,7 +253,7 @@ double computeWristAngle(double shoulderAngle, double elbowAngle, double height)
 // --- Setup --- //
 void setup() {
   // Variables - State
-  currentMasterState = MasterState::ClearDoorway;
+  currentMasterState = MasterState::Test;
   currentProcedureState = ProcedureState::PreState;
 
   // Variables - Time Control
@@ -327,10 +330,10 @@ void setup() {
     ledcAttachPin(JOINT_PIN[j], JOINT_CH[j]);
 
     // Start each joint at a *known* angle (90 ° = neutral)
-    joints[j].currentDeg   = 90.0f;          // software believes we're at 90 °
-    joints[j].targetDeg    = 90.0f;          // same here → no immediate motion
+    joints[j].currentDeg   = startingArmAngles[j];          // software believes we're at 90 °
+    joints[j].targetDeg    = startingArmAngles[j];          // same here → no immediate motion
     joints[j].lastUpdateMs = millis();       // time‑stamp the “write”
-    writeServoRaw(j, 90.0f);                 // send the 90 ° PWM pulse now
+    writeServoRaw(j, startingArmAngles[j]);                 // send the 90 ° PWM pulse now
 
   }
   const float TOL_DEG = 0.05f;         // tolerance for knowing if a servo is still moving
@@ -555,7 +558,7 @@ void loop() {
     // case MasterState::Pet3:
     // break;
 
-    // case MasterState::Test:
+    case MasterState::Test:
     // switch(currentProcedureState) {
     //   case ProcedureState::TapeFollow:
     //   runPID(1000);
@@ -575,10 +578,11 @@ void loop() {
     // }
     // setAllTargets(90, 60, 0, 0, 90);
     // updateServos();
-    // break;
+    delay(100000);
+    break;
 
     case MasterState::Initialize:
-    setAllTargets(0, 80, 0, 50, 90);
+    setAllTargets(0, 70, 0, 50, 90);
     updateServos();
     break;
   }
