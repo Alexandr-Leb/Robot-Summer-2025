@@ -126,16 +126,16 @@ using Joint = uint8_t;
 #define FOREARM_LENGTH 105.641
 
 // Constants - Arm Offsets
-#define SHOULDER_OFFSET_ANGLE 10
-#define ELBOW_OFFSET_ANGLE 30 // From 37, decreasing brings elbow up
-#define WRIST_OFFSET_ANGLE 70 // From 70, increasing brings wrist up
+#define SHOULDER_OFFSET_ANGLE 13.6593818782
+#define ELBOW_OFFSET_ANGLE 32.6352580048 // Decreasing brings elbow up
+#define WRIST_OFFSET_ANGLE 68.9758761267 // Increasing brings wrist up
 
 // Constants - Arm Setup
-double startingArmAngles[] = {90, 90, 0, 40, 90};
+double startingArmAngles[] = {93, 90, 0, 40, 90};
 
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
-#define HYSTERESIS_MULTIPLIER 50
+#define HYSTERESIS_MULTIPLIER 10
 
 // Constants - Magnetometer
 #define MAGNETOMETER_THRESHOLD 260
@@ -558,27 +558,38 @@ void loop() {
     // case MasterState::Pet3:
     // break;
 
-    case MasterState::Test:
-    // switch(currentProcedureState) {
-    //   case ProcedureState::TapeFollow:
-    //   runPID(1000);
-    //   if (!leftOnTape && !rightOnTape) {
-    //     currentProcedureState = ProcedureState::TapeFind;
-    //   }
-    //   break;
+    case MasterState::Test: 
+    switch(currentProcedureState) {
+      case ProcedureState::PreState:
+      initializeReflectanceSensors(500);
+      currentProcedureState = ProcedureState::TapeFollow;
+      break;
 
-    //   case ProcedureState::TapeFind:
-    //   readReflectanceSensors();
-    //   runHysteresis(1000);
-    //   if (leftOnTape || rightOnTape) {
-    //     computePID();
-    //     currentProcedureState = ProcedureState::TapeFollow;
-    //   }
-    //   break;
+      case ProcedureState::TapeFollow:
+      runPID(900);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = ProcedureState::TapeFind;
+      }
+      break; 
+
+      case ProcedureState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(900);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      break;
+    }
+
+    // newShoulderTarget = joints[1].currentDeg + 1;
+    // newElbowTarget = computeElbowAngle(newShoulderTarget, 28.8);
+    // newWristTarget = computeWristAngle(newShoulderTarget, newElbowTarget, 28.8);
+    // setAllTargets(joints[0].currentDeg, newShoulderTarget, newElbowTarget, newWristTarget, joints[4].currentDeg);
+    // waitForServos();
+    // if (newShoulderTarget > 160) {
+    //   delay(1000000);
     // }
-    // setAllTargets(90, 60, 0, 0, 90);
-    // updateServos();
-    delay(100000);
     break;
 
     case MasterState::Initialize:
