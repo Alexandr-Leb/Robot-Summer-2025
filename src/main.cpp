@@ -135,7 +135,7 @@ double startingArmAngles[] = {93, 90, 0, 40, 90};
 
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
-#define HYSTERESIS_MULTIPLIER 10
+#define HYSTERESIS_MULTIPLIER 25
 
 // Constants - Magnetometer
 #define MAGNETOMETER_THRESHOLD 260
