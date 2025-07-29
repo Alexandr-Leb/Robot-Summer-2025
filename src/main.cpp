@@ -12,7 +12,7 @@
 #include "esp_constants.h"
 #include "arm.h"
 #include "drivetrain.h"
-#include "sensors.h"
+#include "sensors.h" 
 
 // --- Constants --- //
 
@@ -42,6 +42,25 @@ Motor verticalMotor = {
     0,
     0
 };
+
+// Variables - Reflectance Sensor
+int leftReflectance;
+int rightReflectance;
+
+// Variables - Reflectance Sensor Initialization
+int leftReflectanceThreshold;
+int rightReflectanceThreshold;
+int leftReflectanceThresholdSum;
+int rightReflectanceThresholdSum;
+int reflectanceAverageLoopCounter;
+
+// Variables - Magnetometer
+Adafruit_LIS3MDL lis;
+double magnetometerMagnitude;
+
+// Variables - Magnetometer Average Calculations
+double magnetometerMagnitudeSum;
+int magnetometerAverageCount;
 
 void setup() {
 }

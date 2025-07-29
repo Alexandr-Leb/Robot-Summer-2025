@@ -9,7 +9,7 @@
 // --- Constants --- //
 const int MOTOR_PWM_FREQUENCY = 120; // in Hz
 const int MOTOR_PWM_NUM_BITS = 12;
-const int MOTOR_PWM_BITS = pow(2, MOTOR_PWM_NUM_BITS);
+const int MOTOR_PWM_BITS = 1 << MOTOR_PWM_BITS;
 const int MOTOR_SWITCH_TIME = 5; // in us
 
 // --- Variables --- //
