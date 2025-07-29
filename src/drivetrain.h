@@ -2,7 +2,6 @@
 // Header Files - External
 #include <Arduino.h>
 #include "driver/ledc.h"
-#include <math.h>
 
 // Header Files - Internal
 #include "esp_constants.h"
@@ -26,7 +25,7 @@ struct Motor {
 extern Motor leftMotor;
 extern Motor rightMotor;
 extern Motor verticalMotor;
-
+ 
 // --- Functions --- //
 void drivetrainSetup() {
   motorSetup(leftMotor);
