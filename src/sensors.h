@@ -24,7 +24,19 @@ extern double magnetometerMagnitudeSum;
 extern int magnetometerAverageCount;
 
 // --- Functions --- //
-void sensorSetup() {}
+void sensorSetup() {
+  // Reflectance Sensor Analog Input Setup
+  adc1_config_width(ADC_WIDTH_12Bit);
+  adc1_config_channel_atten(LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+  adc1_config_channel_atten(RIGHT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+
+  // Reflectance Sensor Variables Setup
+
+  // Magnetometer Sensor I2C Setup
+  lis.begin_I2C();
+
+  // Magnetometer Sensor Setup
+}
 
 void initializeReflectanceSensors() {}
 
