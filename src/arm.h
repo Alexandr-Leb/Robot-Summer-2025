@@ -13,11 +13,12 @@ const int SERVO_PWM_FREQUENCY = 50; // in Hz
 const int SERRVO_PWM_NUM_BITS = 16;
 const int SERVO_PWM_BITS = (1 << SERRVO_PWM_NUM_BITS) - 1;
 const double SERVO_PWM_PERIOD = 1000 / SERVO_PWM_FREQUENCY; // in ms
-const double MIN_MS = 1.0; // in ms
-const double MAX_MS = 2.0; // in ms
+const double MIN_MS = 0.550; // in ms
+const double MAX_MS = 2.450; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
-const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {90, 90, 90, 90, 90}; // in degrees
-const double SERVO_STARTING_SPEED = 40.0; // in degrees/ms
+const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {87, 120, 60, 0, 110}; // in degrees
+const double SERVO_STARTING_SPEED = 0.15; // in degrees/ms
+const double SERVO_MAX_ANGLE_CHANGE = 0.8; // in degrees
 
 // --- Variables --- //
 struct Servo {
@@ -30,10 +31,10 @@ struct Servo {
 };
 
 extern Servo baseServo;
-extern Servo shoulderServo;
+extern Servo shoulderServo; // Max 170
 extern Servo elbowServo;
 extern Servo wristServo;
-extern Servo clawServo;
+extern Servo clawServo; // Down is open
 extern Servo servoArray[NUM_SERVOS];
 
 // --- Function Headers --- //
@@ -57,10 +58,11 @@ void armSetup() {
 }
 
 void setAllServoTargets(double base, double shoulder, double elbow, double wrist, double claw) {
-  double targets[NUM_SERVOS] = {base, shoulder, elbow, wrist, claw};
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    setServoTarget(&servoArray[i], targets[i]);
-  }
+  baseServo.targetAngle = base;
+  shoulderServo.targetAngle = shoulder;
+  elbowServo.targetAngle = elbow;
+  wristServo.targetAngle = wrist;
+  clawServo.targetAngle = claw;
 }
 
 void updateServos() {
@@ -85,10 +87,16 @@ void setServoTarget(Servo *servo, double angle) {
 void updateServo(Servo *servo) {
   if (!servoDone(servo)) {
     int deltaTime = millis() - servo->timeUpdated; // in ms
-    int remainingAngle = servo->targetAngle - servo->currentAngle; // in degrees
-    double nextAngleChange = servo->speed * deltaTime; // in degrees
+    if (deltaTime == 0) {
+      return;
+    }
+    double remainingAngle = servo->targetAngle - servo->currentAngle; // in degrees
+    double nextAngleChange = fmin(servo->speed * deltaTime, SERVO_MAX_ANGLE_CHANGE); // in degrees
+    if (remainingAngle < 0) {
+      nextAngleChange *= -1.0;
+    }
 
-    if (remainingAngle < nextAngleChange) {
+    if (fabs(remainingAngle) < fabs(nextAngleChange)) {
       servoGoTo(servo, servo->targetAngle);
     } else {
       servoGoTo(servo, servo->currentAngle + nextAngleChange);

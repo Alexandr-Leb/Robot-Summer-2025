@@ -17,6 +17,7 @@
 #include "states.h"
 
 // --- Constants --- //
+const int INITIALIZE_TIME = 400; // in ms
 
 // --- Variables --- //
 // Variables - Motors
@@ -130,6 +131,9 @@ bool resetSwitchState;
 // Variables - States
 SwitchState currentSwitchState;
 
+// Variables - Runtime
+int initializeStartTime; // in ms
+
 void setup() {
   drivetrainSetup();
   sensorSetup();
@@ -144,6 +148,17 @@ void loop() {
     break;
 
     case SwitchState::Initialize:
+    initializeStartTime = millis();
+    while (1) {
+      updateSwitchState();
+      if (millis() - initializeStartTime > INITIALIZE_TIME) {
+        initializeReflectanceSensors(500);
+      }
+      for (int i = 0; i < NUM_SERVOS; i++) {
+        setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+        updateServo(&servoArray[i]);
+      }
+    }
     break;
 
     case SwitchState::Reset:
