@@ -14,6 +14,9 @@ extern bool resetSwitchState;
 enum SwitchState {Run, Initialize, Reset, Off};
 extern SwitchState currentSwitchState;
 
+enum TaskState {TapeFollow, TapeFind};
+extern TaskState currentTaskState;
+
 // --- Function Headers --- //
 void stateSetup();
 void switchSetup();

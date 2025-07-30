@@ -17,6 +17,10 @@
 #include "states.h"
 
 // --- Constants --- //
+// Constants - PID
+const double HYSTERESIS_MULTIPLIER = 25;
+
+// Constants - Runtime
 const int INITIALIZE_TIME = 400; // in ms
 
 // --- Variables --- //
@@ -130,18 +134,19 @@ bool resetSwitchState;
 
 // Variables - States
 SwitchState currentSwitchState;
+TaskState currentTaskState;
 
 // Variables - PID
-double k_p;
-double k_i; // Not using
-double k_d;
+double k_p = 1.5;
+double k_i = 0.0; // Not using
+double k_d = 2.0;
 double pValue;
 double iValue; // Not using
 double dValue;
 int error;
 int prevError;
 long prevTime; // in us
-double k_e;
+double k_e = 0.0;
 double eValue;
 
 // Variables - Hysteresis
@@ -149,25 +154,48 @@ bool leftOnTape;
 bool rightOnTape;
 bool prevLeftOnTape;
 bool prevRightOnTape;
-int leftReflectanceThreshold;
-int rightReflectanceThreshold;
 
 // Variables - Runtime
 int initializeStartTime; // in ms
 
 // --- Function Headers --- //
+void pidSetup();
+void computePID();
+void runPID(int power);
 
 void setup() {
   drivetrainSetup();
   sensorSetup();
   armSetup();
+  pidSetup();
   stateSetup();
+
+  Serial.begin(115200);
 }
 
 void loop() {
   updateSwitchState();
   switch(currentSwitchState) {
     case SwitchState::Run:
+    // switch(currentTaskState) {
+    //   case TaskState::TapeFollow:
+    //   runPID(900);
+    //   if (!leftOnTape && !rightOnTape) {
+    //     currentTaskState = TaskState::TapeFind;
+    //   }
+    //   break;
+
+    //   case TaskState::TapeFind:
+    //   readReflectanceSensors();
+    //   runHysteresis(900);
+    //   if (leftOnTape || rightOnTape) {
+    //     computePID();
+    //     currentTaskState = TaskState::TapeFollow;
+    //   }
+    //   break;
+    // }
+    readReflectanceSensors();
+    Serial.printf("%d | %d\n", leftReflectance, rightReflectance);
     break;
 
     case SwitchState::Initialize:
@@ -204,4 +232,41 @@ void loop() {
     }
     break;
   }
+}
+
+// --- Functions --- //
+void pidSetup() {
+  // Variables Setup
+  pValue = 0.0;
+  iValue = 0.0;
+  dValue = 0.0;
+  error = 0;
+  prevError = 0;
+  prevTime = 0;
+  eValue = 0.0;
+  leftOnTape = true;
+  rightOnTape = true;
+  prevLeftOnTape = true;
+  prevRightOnTape = true;
+}
+
+void computePID() {
+  error = rightReflectance - leftReflectance;
+  pValue = k_p * (double) error;
+  dValue = k_d * ((double) (error - prevError)) / ((double) (micros() - prevTime));
+  eValue = k_e * (double) error;
+  prevTime = micros();
+  prevError = error;
+}
+
+void runPID(int power) {
+  readReflectanceSensors();
+  computePID();
+  leftMotorSetPower((int) (power + pValue + dValue - abs(eValue)));
+  rightMotorSetPower((int) (power - pValue - dValue - abs(eValue)));
+}
+
+void runHysteresis(int power) {
+  leftMotorSetPower(power + (int) (prevError * HYSTERESIS_MULTIPLIER));
+  rightMotorSetPower(power - (int) (prevError * HYSTERESIS_MULTIPLIER));
 }
