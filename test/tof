@@ -1,0 +1,54 @@
+#include <Wire.h>
+#include <Adafruit_VL6180X.h>
+#include <Adafruit_LIS3MDL.h>
+#include <Adafruit_Sensor.h>
+
+// Create sensor instances
+Adafruit_VL6180X tof = Adafruit_VL6180X();
+Adafruit_LIS3MDL lis3mdl;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(); // Uses GPIO 21 (SDA) and GPIO 22 (SCL) by default on ESP32
+
+  // Initialize VL6180X ToF sensor
+  if (!tof.begin()) {
+    Serial.println("❌ VL6180X not found!");
+    while (1) delay(10);
+  }
+
+  // Initialize LIS3MDL Magnetometer
+  if (!lis3mdl.begin_I2C()) {
+    Serial.println("❌ LIS3MDL not found!");
+    while (1) delay(10);
+  }
+
+  // Configure LIS3MDL settings
+  lis3mdl.setPerformanceMode(LIS3MDL_ULTRAHIGHMODE);
+  lis3mdl.setOperationMode(LIS3MDL_CONTINUOUSMODE);
+  lis3mdl.setDataRate(LIS3MDL_DATARATE_155_HZ);
+  lis3mdl.setRange(LIS3MDL_RANGE_4_GAUSS);
+
+  Serial.println("✅ Sensors initialized");
+}
+
+void loop() {
+  // Read VL6180X distance
+  uint8_t distance = tof.readRange();
+  Serial.print("📏 Distance: ");
+  Serial.print(distance);
+  Serial.print(" mm\t");
+
+  // Read LIS3MDL magnetic field
+  sensors_event_t magEvent;
+  lis3mdl.getEvent(&magEvent);
+
+  Serial.print("🧲 Magnetic field (uT): X=");
+  Serial.print(magEvent.magnetic.x);
+  Serial.print(" Y=");
+  Serial.print(magEvent.magnetic.y);
+  Serial.print(" Z=");
+  Serial.println(magEvent.magnetic.z);
+
+  delay(500);
+}
