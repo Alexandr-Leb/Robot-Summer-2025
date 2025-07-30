@@ -48,12 +48,18 @@ Motor verticalMotor = {
 // Variables - Reflectance Sensor
 int leftReflectance;
 int rightReflectance;
+int forwardLeftReflectance;
+int forwardRightReflectance;
 
 // Variables - Reflectance Sensor Initialization
 int leftReflectanceThreshold;
-int rightReflectanceThreshold;
 int leftReflectanceThresholdSum;
+int rightReflectanceThreshold;
 int rightReflectanceThresholdSum;
+int forwardLeftReflectanceThreshold;
+int forwardLeftReflectanceThresholdSum;
+int forwardRightReflectanceThreshold;
+int forwardRightReflectanceThresholdSum;
 int reflectanceAverageLoopCounter;
 
 // Variables - Magnetometer
@@ -137,17 +143,22 @@ void loop() {
   updateSwitchState();
   switch(currentSwitchState) {
     case SwitchState::Run:
-    Serial.printf("State: Run");
-    delay(200);
+    Serial.printf("State: Run\n");
+    delay(500);
     break;
 
     case SwitchState::Initialize:
-    Serial.printf("State: Init");
-    delay(200);
+    Serial.printf("State: Init\n");
+    readReflectanceSensors();
+    readForwardReflectanceSensors();
+    readMagnetometer();
+    readTimeOfFlight();
+    Serial.printf("LR: %d | RR: %d | Mag: %d | Tof: %d | FLR: %d | FRR: %d\n", leftReflectance, rightReflectance, magnetometerMagnitude, timeOfFlightReading, forwardLeftReflectance, forwardRightReflectance);
+    delay(500);
     break;
-        
+
     case SwitchState::Reset:
-    Serial.printf("State: Reset");
+    Serial.printf("State: Reset\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(-25);
@@ -158,7 +169,7 @@ void loop() {
     break;
 
     case SwitchState::Off:
-    Serial.printf("State: Off");
+    Serial.printf("State: Off\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(0);

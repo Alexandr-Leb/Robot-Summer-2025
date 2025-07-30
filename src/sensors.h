@@ -18,12 +18,18 @@ const int REFLECTANCE_THRESHOLD_OFFSET = 400;
 // Variables - Reflectance Sensor
 extern int leftReflectance;
 extern int rightReflectance;
+extern int forwardLeftReflectance;
+extern int forwardRightReflectance;
 
 // Variables - Reflectance Sensor Initialization
 extern int leftReflectanceThreshold;
-extern int rightReflectanceThreshold;
 extern int leftReflectanceThresholdSum;
+extern int rightReflectanceThreshold;
 extern int rightReflectanceThresholdSum;
+extern int forwardLeftReflectanceThreshold;
+extern int forwardLeftReflectanceThresholdSum;
+extern int forwardRightReflectanceThreshold;
+extern int forwardRightReflectanceThresholdSum;
 extern int reflectanceAverageLoopCounter;
 
 // Variables - Magnetometer
@@ -44,6 +50,7 @@ void reflectanceSetup();
 void magnetometerSetup();
 void timeOfFlightSetup();
 void readReflectanceSensors();
+void readForwardReflectanceSensors();
 void readMagnetometer();
 void readTimeOfFlight();
 void initializeReflectanceSensors();
@@ -60,12 +67,18 @@ void reflectanceSetup() {
   adc1_config_width(ADC_WIDTH_12Bit);
   adc1_config_channel_atten(LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
   adc1_config_channel_atten(RIGHT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+  adc1_config_channel_atten(FORWARD_LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+  adc1_config_channel_atten(FORWARD_RIGHT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
 
   // Variable Initialization
   leftReflectance = 0;
   rightReflectance = 0;
+  forwardLeftReflectance = 0;
+  forwardRightReflectance = 0;
   leftReflectanceThresholdSum = 0;
   rightReflectanceThresholdSum = 0;
+  forwardLeftReflectanceThresholdSum = 0;
+  forwardRightReflectanceThresholdSum = 0;
   reflectanceAverageLoopCounter = 0;
 }
 
@@ -96,6 +109,11 @@ void readReflectanceSensors() {
   rightReflectance = adc1_get_raw(RIGHT_REFLECTANCE_PIN);
 }
 
+void readForwardReflectanceSensors() {
+  forwardLeftReflectance = adc1_get_raw(FORWARD_LEFT_REFLECTANCE_PIN);
+  forwardRightReflectance = adc1_get_raw(FORWARD_RIGHT_REFLECTANCE_PIN);
+}
+
 void readMagnetometer() {
   sensors_event_t event;
   lis.getEvent(&event);
@@ -114,8 +132,12 @@ void initializeReflectanceSensors(int initializeTime) {
   while (millis() - startTime < initializeTime) {
     leftReflectanceThresholdSum += adc1_get_raw(LEFT_REFLECTANCE_PIN);
     rightReflectanceThresholdSum += adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+    forwardLeftReflectanceThresholdSum += adc1_get_raw(FORWARD_LEFT_REFLECTANCE_PIN);
+    forwardRightReflectanceThresholdSum += adc1_get_raw(FORWARD_RIGHT_REFLECTANCE_PIN);
     reflectanceAverageLoopCounter++;
   }
   leftReflectanceThreshold = (int) ((double) leftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
   rightReflectanceThreshold = (int) ((double) rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+  forwardLeftReflectanceThreshold = (int) ((double) forwardLeftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+  forwardRightReflectanceThreshold = (int) ((double) forwardRightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
 }
