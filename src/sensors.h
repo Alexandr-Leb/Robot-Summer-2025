@@ -86,10 +86,6 @@ void reflectanceSetup() {
 void magnetometerSetup() {
   // Sensor Setup
   lis.begin_I2C();
-  // lis.setPerformanceMode(LIS3MDL_ULTRAHIGHMODE);
-  // lis.setOperationMode(LIS3MDL_CONTINUOUSMODE);
-  // lis.setDataRate(LIS3MDL_DATARATE_155_HZ);
-  // lis.setRange(LIS3MDL_RANGE_4_GAUSS);
 
   // Variables Initialization
   magnetometerMagnitude = 0.0;

@@ -131,8 +131,6 @@ bool resetSwitchState;
 SwitchState currentSwitchState;
 
 void setup() {
-  Serial.begin(115200);
-
   drivetrainSetup();
   sensorSetup();
   armSetup();
@@ -149,7 +147,6 @@ void loop() {
     break;
 
     case SwitchState::Reset:
-    //Serial.printf("State: Reset\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(-25);
@@ -160,7 +157,6 @@ void loop() {
     break;
 
     case SwitchState::Off:
-    //Serial.printf("State: Off\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(0);
