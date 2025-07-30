@@ -115,11 +115,9 @@ void setup() {
   drivetrainSetup();
   sensorSetup();
   armSetup();
-
-  Serial.begin(115200);
 }
 
-void loop() {
+void loop() { 
     delay(1000);
     ledcWrite(BASE_SERVO_CHANNEL, angleToPWM(10));
     delay(1000);

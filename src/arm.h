@@ -13,10 +13,10 @@ const int SERVO_PWM_FREQUENCY = 50; // in Hz
 const int SERRVO_PWM_NUM_BITS = 16;
 const int SERVO_PWM_BITS = (1 << SERRVO_PWM_NUM_BITS) - 1;
 const double SERVO_PWM_PERIOD = 1000 / SERVO_PWM_FREQUENCY; // in ms
-const double MIN_MS = 1.0; // in ms // TO CANGE
-const double MAX_MS = 2.0; // in ms // TO CAHNGE
+const double MIN_MS = 1.0; // in ms
+const double MAX_MS = 2.0; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
-const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {60, 90, 90, 90, 90}; // in degrees
+const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {90, 90, 90, 90, 90}; // in degrees
 
 // --- Variables --- //
 struct Servo {
