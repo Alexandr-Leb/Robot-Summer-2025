@@ -17,8 +17,12 @@
 // Pins - Sensors
 #define LEFT_REFLECTANCE_PIN ADC1_CHANNEL_2 // 38
 #define RIGHT_REFLECTANCE_PIN ADC1_CHANNEL_1 // 37
-#define MAGNETOMETER_PIN_1 21
-#define MAGNETOMETER_PIN_2 22
+#define I2C_PIN_1 21
+#define I2C_Pin_2 22
+
+// Pins - Switches
+#define INITIALIZE_SWITCH_PIN 7
+#define RESET_SWITCH_PIN 8
 
 // --- Channels --- //
 // Channels - Drive Motors

@@ -12,7 +12,8 @@
 #include "esp_constants.h"
 #include "arm.h"
 #include "drivetrain.h"
-#include "sensors.h" 
+#include "sensors.h"
+#include "states.h"
 
 // --- Constants --- //
 
@@ -119,6 +120,7 @@ void setup() {
   drivetrainSetup();
   sensorSetup();
   armSetup();
+  stateSetup();
 }
 
 void loop() { 

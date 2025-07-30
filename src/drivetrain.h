@@ -42,15 +42,15 @@ void drivetrainSetup() {
 }
 
 void motorSetup(Motor *motor) {
-  // Motor Variables Initialization
-  motor->prevDutyCycle = 0;
-  motor->timeSwitch = 0;
-  
   // Motor PWM Setup
   ledcSetup(motor->FORWARDS_CHANNEL, MOTOR_PWM_FREQUENCY, MOTOR_PWM_NUM_BITS);
   ledcSetup(motor->REVERSE_CHANNEL, MOTOR_PWM_FREQUENCY, MOTOR_PWM_NUM_BITS);
   ledcAttachPin(motor->FORWARDS_PIN, motor->FORWARDS_CHANNEL);
   ledcAttachPin(motor->REVERSE_PIN, motor->REVERSE_CHANNEL);
+
+  // Motor Variables Initialization
+  motor->prevDutyCycle = 0;
+  motor->timeSwitch = 0;
 }
 
 void leftMotorSetPower(int dutyCycle) {

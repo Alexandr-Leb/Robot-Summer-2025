@@ -56,39 +56,39 @@ void sensorSetup() {
 }
 
 void reflectanceSetup() {
+  // Analog Input Setup
+  adc1_config_width(ADC_WIDTH_12Bit);
+  adc1_config_channel_atten(LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+  adc1_config_channel_atten(RIGHT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
+
   // Variable Initialization
   leftReflectance = 0;
   rightReflectance = 0;
   leftReflectanceThresholdSum = 0;
   rightReflectanceThresholdSum = 0;
   reflectanceAverageLoopCounter = 0;
-
-  // Analog Input Setup
-  adc1_config_width(ADC_WIDTH_12Bit);
-  adc1_config_channel_atten(LEFT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
-  adc1_config_channel_atten(RIGHT_REFLECTANCE_PIN, ADC_ATTEN_DB_12);
 }
 
 void magnetometerSetup() {
-  // Variables Initialization
-  magnetometerMagnitude = 0.0;
-  magnetometerMagnitudeSum = 0.0;
-  magnetometerAverageCount = 0;
-
   // Sensor Setup
   lis.begin_I2C();
   // lis.setPerformanceMode(LIS3MDL_ULTRAHIGHMODE);
   // lis.setOperationMode(LIS3MDL_CONTINUOUSMODE);
   // lis.setDataRate(LIS3MDL_DATARATE_155_HZ);
   // lis.setRange(LIS3MDL_RANGE_4_GAUSS);
+
+  // Variables Initialization
+  magnetometerMagnitude = 0.0;
+  magnetometerMagnitudeSum = 0.0;
+  magnetometerAverageCount = 0;
 }
 
 void timeOfFlightSetup() {
-  // Variables Initialization
-  timeOfFlightReading = 0.0;
-
   // Sensor Setup
   tof.begin()
+
+  // Variables Initialization
+  timeOfFlightReading = 0.0;
 }
 
 void readReflectanceSensors() {
