@@ -12,9 +12,9 @@ const int SERVO_PWM_FREQUENCY = 50; // in Hz
 const int SERRVO_PWM_NUM_BITS = 16;
 const int SERVO_PWM_BITS = (1 << SERRVO_PWM_NUM_BITS) - 1;
 const double SERVO_PWM_PERIOD = 1000 / SERVO_PWM_FREQUENCY; // in ms
-const double MIN_MS = 1.0;
-const double MAX_MS = 2.0;
-const double SERVO_ERROR = 0.01;
+const double MIN_MS = 1.0; // in ms
+const double MAX_MS = 2.0; // in ms
+const double SERVO_ERROR = 0.01; // in degrees
 
 // --- Variables --- //
 struct Servo { 
@@ -40,16 +40,15 @@ void setServoTarget(Servo *servo, double angle) {
 
 void updateServo(Servo *servo) {
   if (!servoDone(servo)) {
-    int deltaTime = millis() - servo->timeUpdated;
-    int remainingAngle = servo->targetAngle - servo->currentAngle;
-    double nextAngleChange = servo->speed * deltaTime;
+    int deltaTime = millis() - servo->timeUpdated; // in ms
+    int remainingAngle = servo->targetAngle - servo->currentAngle; // in degrees
+    double nextAngleChange = servo->speed * deltaTime; // in degrees
 
     if (remainingAngle < nextAngleChange) {
       servoGoTo(servo, servo->targetAngle);
-      return;
+    } else {
+      servoGoTo(servo, servo->currentAngle + nextAngleChange);
     }
-
-    servoGoTo(servo, servo->currentAngle + nextAngleChange);
   }
 }
 
