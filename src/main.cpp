@@ -72,7 +72,7 @@ int magnetometerAverageCount;
 
 // Variables - Time of Flight
 Adafruit_VL6180X tof = Adafruit_VL6180X();
-double timeOfFlightReading;
+uint8_t timeOfFlightReading;
 
 // Variables - Servos
 Servo baseServo = {
@@ -143,22 +143,13 @@ void loop() {
   updateSwitchState();
   switch(currentSwitchState) {
     case SwitchState::Run:
-    Serial.printf("State: Run\n");
-    delay(500);
     break;
 
     case SwitchState::Initialize:
-    Serial.printf("State: Init\n");
-    readReflectanceSensors();
-    readForwardReflectanceSensors();
-    readMagnetometer();
-    readTimeOfFlight();
-    Serial.printf("LR: %d | RR: %d | Mag: %d | Tof: %d | FLR: %d | FRR: %d\n", leftReflectance, rightReflectance, magnetometerMagnitude, timeOfFlightReading, forwardLeftReflectance, forwardRightReflectance);
-    delay(500);
     break;
 
     case SwitchState::Reset:
-    Serial.printf("State: Reset\n");
+    //Serial.printf("State: Reset\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(-25);
@@ -169,7 +160,7 @@ void loop() {
     break;
 
     case SwitchState::Off:
-    Serial.printf("State: Off\n");
+    //Serial.printf("State: Off\n");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(0);

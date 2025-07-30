@@ -42,7 +42,7 @@ extern int magnetometerAverageCount;
 
 // Variables - Time of Flight
 extern Adafruit_VL6180X tof;
-extern double timeOfFlightReading;
+extern uint8_t timeOfFlightReading;
 
 // --- Function Headers --- //
 void sensorSetup();
@@ -57,6 +57,7 @@ void initializeReflectanceSensors();
 
 // --- Functions --- //
 void sensorSetup() {
+  Wire.begin();
   reflectanceSetup();
   magnetometerSetup();
   timeOfFlightSetup();
