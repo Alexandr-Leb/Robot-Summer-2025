@@ -36,8 +36,8 @@ void switchSetup() {
 
 void updateSwitchState() {
     // Read switch states
-    initializeSwitchState = digitalRead(INITIALIZE_SWITCH_PIN);
-    resetSwitchState = digitalRead(RESET_SWITCH_PIN);
+    initializeSwitchState = !(bool)digitalRead(INITIALIZE_SWITCH_PIN);
+    resetSwitchState = !(bool)digitalRead(RESET_SWITCH_PIN);
 
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
