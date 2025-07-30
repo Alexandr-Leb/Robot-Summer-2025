@@ -80,7 +80,7 @@ Servo baseServo = {
     BASE_SERVO_CHANNEL,
     90.0,
     90.0,
-    40.0,
+    SERVO_STARTING_SPEED,
     0
 };
 Servo shoulderServo = {
@@ -88,7 +88,7 @@ Servo shoulderServo = {
     SHOULDER_SERVO_CHANNEL,
     90.0,
     90.0,
-    40.0,
+    SERVO_STARTING_SPEED,
     0
 };
 Servo elbowServo = {
@@ -96,7 +96,7 @@ Servo elbowServo = {
     ELBOW_SERVO_CHANNEL,
     90.0,
     90.0,
-    40.0,
+    SERVO_STARTING_SPEED,
     0
 };
 Servo wristServo = {
@@ -104,7 +104,7 @@ Servo wristServo = {
     WRIST_SERVO_CHANNEL,
     90.0,
     90.0,
-    40.0,
+    SERVO_STARTING_SPEED,
     0
 };
 Servo clawServo = {
@@ -112,7 +112,7 @@ Servo clawServo = {
     CLAW_SERVO_CHANNEL,
     90.0,
     90.0,
-    40.0,
+    SERVO_STARTING_SPEED,
     0
 };
 Servo servoArray[NUM_SERVOS] = {

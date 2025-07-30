@@ -41,7 +41,7 @@ void updateSwitchState() {
 
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
-        currentSwitchState = SwitchState::run;
+        currentSwitchState = SwitchState::Run;
     } else if (initializeSwitchState && !resetSwitchState) {
         currentSwitchState = SwitchState::Initialize;
     } else if (resetSwitchState) {

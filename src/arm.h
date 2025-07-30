@@ -17,6 +17,7 @@ const double MIN_MS = 1.0; // in ms
 const double MAX_MS = 2.0; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
 const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {90, 90, 90, 90, 90}; // in degrees
+const double SERVO_STARTING_SPEED = 40.0; // in degrees/ms
 
 // --- Variables --- //
 struct Servo {

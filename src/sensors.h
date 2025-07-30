@@ -98,7 +98,7 @@ void magnetometerSetup() {
 
 void timeOfFlightSetup() {
   // Sensor Setup
-  tof.begin()
+  tof.begin();
 
   // Variables Initialization
   timeOfFlightReading = 0.0;
