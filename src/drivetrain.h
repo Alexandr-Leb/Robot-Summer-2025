@@ -26,6 +26,14 @@ extern Motor leftMotor;
 extern Motor rightMotor;
 extern Motor verticalMotor;
  
+// --- Function Headers --- //
+void drivetrainSetup();
+void motorSetup(Motor *motor);
+void leftMotorSetPower(int dutyCycle);
+void rightMotorSetPower(int dutyCycle);
+void verticalMotorSetPower(int dutyCycle);
+void motorSetPower(Motor *motor, int dutyCycle);
+
 // --- Functions --- //
 void drivetrainSetup() {
   motorSetup(&leftMotor);

@@ -118,4 +118,15 @@ void setup() {
 }
 
 void loop() {
+    verticalMotorSetPower(50);
+    leftMotorSetPower(50);
+    rightMotorSetPower(50);
+    delay(2000);
+    verticalMotorSetPower(-50);
+    leftMotorSetPower(-50);
+    rightMotorSetPower(-50);
+    delay(2000);
+    verticalMotorSetPower(0);
+    leftMotorSetPower(0);
+    rightMotorSetPower(0);
 }

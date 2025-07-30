@@ -33,6 +33,14 @@ extern double magnetometerMagnitude;
 extern double magnetometerMagnitudeSum;
 extern int magnetometerAverageCount;
 
+// --- Function Headers --- //
+void sensorSetup();
+void reflectanceSetup();
+void magnetometerSetup();
+void readReflectanceSensors();
+void readMagnetometer();
+void initializeReflectanceSensors();
+
 // --- Functions --- //
 void sensorSetup() {
   reflectanceSetup();

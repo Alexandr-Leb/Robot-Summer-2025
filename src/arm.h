@@ -35,6 +35,17 @@ extern Servo wristServo;
 extern Servo clawServo;
 extern Servo servoArray[NUM_SERVOS];
 
+// --- Function Headers --- //
+void armSetup();
+void setAllServoTargets(double base, double shoulder, double elbow, double wrist, double claw);
+void updateServos();
+bool allServosDone();
+void setServoTarget(Servo *servo, double angle);
+void updateServo(Servo *servo);
+bool servoDone(Servo *servo);
+double angleToPWM(double angle);
+void servoGoTo(Servo *servo, double angle);
+
 // --- Functions --- //
 void armSetup() {
   for (int i = 0; i < NUM_SERVOS; i++) {
