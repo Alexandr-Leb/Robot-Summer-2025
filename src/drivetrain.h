@@ -18,7 +18,7 @@ struct Motor {
   const int REVERSE_PIN;
   const int FORWARDS_CHANNEL;
   const int REVERSE_CHANNEL;
-  int prevDutyCycle; // percent
+  int prevPower;
   unsigned long timeSwitch; // in us
 };
 
@@ -29,10 +29,10 @@ extern Motor verticalMotor;
 // --- Function Headers --- //
 void drivetrainSetup();
 void motorSetup(Motor *motor);
-void leftMotorSetPower(int dutyCycle);
-void rightMotorSetPower(int dutyCycle);
-void verticalMotorSetPower(int dutyCycle);
-void motorSetPower(Motor *motor, int dutyCycle);
+void leftMotorSetPower(int power);
+void rightMotorSetPower(int power);
+void verticalMotorSetPower(int power);
+void motorSetPower(Motor *motor, int power);
 
 // --- Functions --- //
 void drivetrainSetup() {
@@ -49,32 +49,31 @@ void motorSetup(Motor *motor) {
   ledcAttachPin(motor->REVERSE_PIN, motor->REVERSE_CHANNEL);
 
   // Motor Variables Initialization
-  motor->prevDutyCycle = 0;
+  motor->prevPower = 0;
   motor->timeSwitch = 0;
 }
 
-void leftMotorSetPower(int dutyCycle) {
-  motorSetPower(&leftMotor, dutyCycle);
+void leftMotorSetPower(int power) {
+  motorSetPower(&leftMotor, power);
 }
 
-void rightMotorSetPower(int dutyCycle) {
-  motorSetPower(&rightMotor, dutyCycle);
+void rightMotorSetPower(int power) {
+  motorSetPower(&rightMotor, power);
 }
 
-void verticalMotorSetPower(int dutyCycle) {
-  motorSetPower(&verticalMotor, dutyCycle);
+void verticalMotorSetPower(int power) {
+  motorSetPower(&verticalMotor, power);
 }
 
 
-void motorSetPower(Motor *motor, int dutyCycle) {
-  int power = (int) (dutyCycle * pow(2, MOTOR_PWM_NUM_BITS) / 100.0);
-  if (dutyCycle > 0) {
-    if (motor->prevDutyCycle > 0) {
-      motor->prevDutyCycle = dutyCycle;
+void motorSetPower(Motor *motor, int power) {
+  if (power > 0) {
+    if (motor->prevPower > 0) {
+      motor->prevPower = power;
       ledcWrite(motor->REVERSE_CHANNEL, 0); // Unnecessary
       ledcWrite(motor->FORWARDS_CHANNEL, power); 
-    } else if (motor->prevDutyCycle < 0) {
-      motor->prevDutyCycle = 0;
+    } else if (motor->prevPower < 0) {
+      motor->prevPower = 0;
       ledcWrite(motor->FORWARDS_CHANNEL, 0);
       ledcWrite(motor->REVERSE_CHANNEL, 0);
       motor->timeSwitch = micros();
@@ -84,13 +83,13 @@ void motorSetPower(Motor *motor, int dutyCycle) {
         ledcWrite(motor->FORWARDS_CHANNEL, power);
       }
     }
-  } else if (dutyCycle < 0) {
-    if (motor->prevDutyCycle < 0) {
-      motor->prevDutyCycle = dutyCycle;
+  } else if (power < 0) {
+    if (motor->prevPower < 0) {
+      motor->prevPower = power;
       ledcWrite(motor->FORWARDS_CHANNEL, 0); // Unnecessary
       ledcWrite(motor->REVERSE_CHANNEL, -power);
-    } else if (motor->prevDutyCycle > 0) {
-      motor->prevDutyCycle = 0;
+    } else if (motor->prevPower > 0) {
+      motor->prevPower = 0;
       ledcWrite(motor->FORWARDS_CHANNEL, 0);
       ledcWrite(motor->REVERSE_CHANNEL, 0);
       motor->timeSwitch = micros();
@@ -101,10 +100,10 @@ void motorSetPower(Motor *motor, int dutyCycle) {
       }
     }
   } else {
-    if (motor->prevDutyCycle != 0) {
+    if (motor->prevPower != 0) {
       motor->timeSwitch = micros();
     }
-    motor->prevDutyCycle = 0;
+    motor->prevPower = 0;
     ledcWrite(motor->FORWARDS_CHANNEL, 0);
     ledcWrite(motor->REVERSE_CHANNEL, 0);
   }

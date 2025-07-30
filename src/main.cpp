@@ -131,8 +131,31 @@ bool resetSwitchState;
 // Variables - States
 SwitchState currentSwitchState;
 
+// Variables - PID
+double k_p;
+double k_i; // Not using
+double k_d;
+double pValue;
+double iValue; // Not using
+double dValue;
+int error;
+int prevError;
+long prevTime; // in us
+double k_e;
+double eValue;
+
+// Variables - Hysteresis
+bool leftOnTape;
+bool rightOnTape;
+bool prevLeftOnTape;
+bool prevRightOnTape;
+int leftReflectanceThreshold;
+int rightReflectanceThreshold;
+
 // Variables - Runtime
 int initializeStartTime; // in ms
+
+// --- Function Headers --- //
 
 void setup() {
   drivetrainSetup();

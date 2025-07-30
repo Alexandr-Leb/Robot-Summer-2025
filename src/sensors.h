@@ -44,6 +44,12 @@ extern int magnetometerAverageCount;
 extern Adafruit_VL6180X tof;
 extern uint8_t timeOfFlightReading;
 
+// Variables - Hysteresis
+extern bool leftOnTape;
+extern bool rightOnTape;
+extern bool prevLeftOnTape;
+extern bool prevRightOnTape;
+
 // --- Function Headers --- //
 void sensorSetup();
 void reflectanceSetup();
@@ -104,6 +110,12 @@ void timeOfFlightSetup() {
 void readReflectanceSensors() {
   leftReflectance = adc1_get_raw(LEFT_REFLECTANCE_PIN);
   rightReflectance = adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+
+  // Hysteresis Computation
+  prevLeftOnTape = leftOnTape;
+  prevRightOnTape = rightOnTape;
+  leftOnTape = (leftReflectance > leftReflectanceThreshold);
+  rightOnTape = (rightReflectance > rightReflectanceThreshold);
 }
 
 void readForwardReflectanceSensors() {
