@@ -117,7 +117,16 @@ Servo servoArray[NUM_SERVOS] = {
     clawServo
 };
 
+// Variables - Switches
+bool initializeSwitchState;
+bool resetSwitchState;
+
+// Variables - States
+SwitchState currentSwitchState;
+
 void setup() {
+  Serial.begin(115200);
+
   drivetrainSetup();
   sensorSetup();
   armSetup();
@@ -128,15 +137,28 @@ void loop() {
   updateSwitchState();
   switch(currentSwitchState) {
     case SwitchState::Run:
+    Serial.printf("State: Run");
+    delay(200);
     break;
 
     case SwitchState::Initialize:
+    Serial.printf("State: Init");
+    delay(200);
     break;
         
     case SwitchState::Reset:
+    Serial.printf("State: Reset");
+    leftMotorSetPower(0);
+    rightMotorSetPower(0);
+    verticalMotorSetPower(-25);
+    for (int i = 0; i < NUM_SERVOS; i++) {
+      setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+      updateServo(&servoArray[i]);
+    }
     break;
 
     case SwitchState::Off:
+    Serial.printf("State: Off");
     leftMotorSetPower(0);
     rightMotorSetPower(0);
     verticalMotorSetPower(0);

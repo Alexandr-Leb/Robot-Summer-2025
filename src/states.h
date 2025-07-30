@@ -6,7 +6,7 @@
 #include "esp_constants.h"
 
 // --- Variables --- //
-// Variables - Switch
+// Variables - Switches
 extern bool initializeSwitchState;
 extern bool resetSwitchState;
 
