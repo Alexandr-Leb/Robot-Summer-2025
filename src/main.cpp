@@ -62,7 +62,59 @@ double magnetometerMagnitude;
 double magnetometerMagnitudeSum;
 int magnetometerAverageCount;
 
+// Variables - Servos
+Servo baseServo = {
+    BASE_SERVO_PIN,
+    BASE_SERVO_CHANNEL,
+    90.0,
+    90.0,
+    40.0,
+    0
+};
+Servo shoulderServo = {
+    SHOULDER_SERVO_PIN,
+    SHOULDER_SERVO_CHANNEL,
+    90.0,
+    90.0,
+    40.0,
+    0
+};
+Servo elbowServo = {
+    ELBOW_SERVO_PIN,
+    ELBOW_SERVO_CHANNEL,
+    90.0,
+    90.0,
+    40.0,
+    0
+};
+Servo wristServo = {
+    WRIST_SERVO_PIN,
+    WRIST_SERVO_CHANNEL,
+    90.0,
+    90.0,
+    40.0,
+    0
+};
+Servo clawServo = {
+    CLAW_SERVO_PIN,
+    CLAW_SERVO_CHANNEL,
+    90.0,
+    90.0,
+    40.0,
+    0
+};
+Servo servoArray[NUM_SERVOS] = {
+    baseServo,
+    shoulderServo,
+    elbowServo,
+    wristServo,
+    clawServo
+};
+
 void setup() {
+    drivetrainSetup();
+    sensorSetup();
+    armSetup();
 }
 
 void loop() {

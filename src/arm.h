@@ -8,6 +8,7 @@
 #include "esp_constants.h"
 
 // --- Constants --- //
+const int NUM_SERVOS = 5;
 const int SERVO_PWM_FREQUENCY = 50; // in Hz
 const int SERRVO_PWM_NUM_BITS = 16;
 const int SERVO_PWM_BITS = (1 << SERRVO_PWM_NUM_BITS) - 1;
@@ -15,6 +16,7 @@ const double SERVO_PWM_PERIOD = 1000 / SERVO_PWM_FREQUENCY; // in ms
 const double MIN_MS = 1.0; // in ms
 const double MAX_MS = 2.0; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
+const double servoStartingAngles[NUM_SERVOS] = {93, 90, 0, 40, 90}; // in degrees
 
 // --- Variables --- //
 struct Servo { 
@@ -31,8 +33,40 @@ extern Servo shoulderServo;
 extern Servo elbowServo;
 extern Servo wristServo;
 extern Servo clawServo;
+extern Servo servoArray[NUM_SERVOS];
 
 // --- Functions --- //
+void armSetup() {
+  for (int i = 0; i < NUM_SERVOS; i++) {
+  setServoTarget(&servoArray[i], servoStartingAngles[i]); 
+  }
+  while (!allServosDone) {
+    updateServos();
+    delay(5);
+  } 
+}
+
+void setAllServoTargets(double base, double shoulder, double elbow, double wrist, double claw) {
+  double targets[NUM_SERVOS] = {base, shoulder, elbow, wrist, claw};
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    setServoTarget(&servoArray[i], targets[i]);
+  }
+}
+
+void updateServos() {
+  for (int i  = 0; i < NUM_SERVOS; i++) {
+    updateServo(&servoArray[i]);
+  }
+}
+
+bool allServosDone() {
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    if (!servoDone(&servoArray[i])) {
+      return false;
+    }
+  }
+  return true;
+}
 
 void setServoTarget(Servo *servo, double angle) {
   servo->targetAngle = angle;
