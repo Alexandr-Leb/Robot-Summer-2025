@@ -3,7 +3,8 @@
 #include <Arduino.h>
 #include "driver/adc.h"
 #include <Wire.h>
-#include <Adafruit_LIS3MDL.h>
+#include <Adafruit_VL6180X.h> // Time of flight
+#include <Adafruit_LIS3MDL.h> // Magnetometer
 #include <Adafruit_Sensor.h>
 
 // Header Files - Internal
@@ -33,18 +34,25 @@ extern double magnetometerMagnitude;
 extern double magnetometerMagnitudeSum;
 extern int magnetometerAverageCount;
 
+// Variables - Time of Flight
+extern Adafruit_VL6180X tof;
+extern double timeOfFlightReading;
+
 // --- Function Headers --- //
 void sensorSetup();
 void reflectanceSetup();
 void magnetometerSetup();
+void timeOfFlightSetup();
 void readReflectanceSensors();
 void readMagnetometer();
+void readTimeOfFlight();
 void initializeReflectanceSensors();
 
 // --- Functions --- //
 void sensorSetup() {
   reflectanceSetup();
   magnetometerSetup();
+  timeOfFlightSetup();
 }
 
 void reflectanceSetup() {
@@ -67,8 +75,20 @@ void magnetometerSetup() {
   magnetometerMagnitudeSum = 0.0;
   magnetometerAverageCount = 0;
 
-  // I2C Setup
+  // Sensor Setup
   lis.begin_I2C();
+  // lis.setPerformanceMode(LIS3MDL_ULTRAHIGHMODE);
+  // lis.setOperationMode(LIS3MDL_CONTINUOUSMODE);
+  // lis.setDataRate(LIS3MDL_DATARATE_155_HZ);
+  // lis.setRange(LIS3MDL_RANGE_4_GAUSS);
+}
+
+void timeOfFlightSetup() {
+  // Variables Initialization
+  timeOfFlightReading = 0.0;
+
+  // Sensor Setup
+  tof.begin()
 }
 
 void readReflectanceSensors() {
@@ -83,6 +103,10 @@ void readMagnetometer() {
   float y = event.magnetic.y;
   float z = event.magnetic.z;
   magnetometerMagnitude = (double) sqrt(x * x + y * y + z * z);
+}
+
+void readTimeOfFlight() {
+  timeOfFlightReading = tof.readRange();
 }
 
 void initializeReflectanceSensors(int initializeTime) {

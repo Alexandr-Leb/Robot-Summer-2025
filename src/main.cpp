@@ -62,6 +62,10 @@ double magnetometerMagnitude;
 double magnetometerMagnitudeSum;
 int magnetometerAverageCount;
 
+// Variables - Time of Flight
+Adafruit_VL6180X tof = Adafruit_VL6180X();
+double timeOfFlightReading;
+
 // Variables - Servos
 Servo baseServo = {
     BASE_SERVO_PIN,
