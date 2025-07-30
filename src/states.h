@@ -11,12 +11,13 @@ extern bool initializeSwitchState;
 extern bool resetSwitchState;
 
 // Variables - States
-enum SwitchState {Off, Initialize, Reset, Run};
+enum SwitchState {Run, Initialize, Reset, Off};
 extern SwitchState currentSwitchState;
 
 // --- Function Headers --- //
 void stateSetup();
 void switchSetup();
+void updateSwitchState();
 
 // --- Functions --- //
 void stateSetup() {
@@ -33,7 +34,7 @@ void switchSetup() {
     resetSwitchState = digitalRead(RESET_SWITCH_PIN);
 }
 
-void readSwitchState() {
+void updateSwitchState() {
     // Read switch states
     initializeSwitchState = digitalRead(INITIALIZE_SWITCH_PIN);
     resetSwitchState = digitalRead(RESET_SWITCH_PIN);
@@ -41,5 +42,11 @@ void readSwitchState() {
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
         currentSwitchState = SwitchState::run;
-    } else if () 
+    } else if (initializeSwitchState && !resetSwitchState) {
+        currentSwitchState = SwitchState::Initialize;
+    } else if (resetSwitchState) {
+        currentSwitchState = SwitchState::Reset;
+    } else {
+        currentSwitchState = SwitchState::Off;
+    }
 }

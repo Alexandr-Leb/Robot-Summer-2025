@@ -5,6 +5,7 @@
 #include "driver/ledc.h"
 #include <math.h>
 #include <Wire.h>
+#include <Adafruit_VL6180X.h>
 #include <Adafruit_LIS3MDL.h>
 #include <Adafruit_Sensor.h>
 
@@ -123,17 +124,26 @@ void setup() {
   stateSetup();
 }
 
-void loop() { 
-    delay(1000);
-    ledcWrite(BASE_SERVO_CHANNEL, angleToPWM(10));
-    delay(1000);
-    ledcWrite(SHOULDER_SERVO_CHANNEL, angleToPWM(10));
-    delay(1000);
-    ledcWrite(ELBOW_SERVO_CHANNEL, angleToPWM(10));
-    delay(1000);
-    ledcWrite(WRIST_SERVO_CHANNEL, angleToPWM(10));
-    delay(1000);
-    ledcWrite(CLAW_SERVO_CHANNEL, angleToPWM(10));
-    Serial.printf("%d", angleToPWM(10));
-    delay(100000);
+void loop() {
+  updateSwitchState();
+  switch(currentSwitchState) {
+    case SwitchState::Run:
+    break;
+
+    case SwitchState::Initialize:
+    break;
+        
+    case SwitchState::Reset:
+    break;
+
+    case SwitchState::Off:
+    leftMotorSetPower(0);
+    rightMotorSetPower(0);
+    verticalMotorSetPower(0);
+    for (int i = 0; i < NUM_SERVOS; i++) {
+      setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+      updateServo(&servoArray[i]);
+    }
+    break;
+  }
 }
