@@ -112,21 +112,24 @@ Servo servoArray[NUM_SERVOS] = {
 };
 
 void setup() {
-    drivetrainSetup();
-    sensorSetup();
-    armSetup();
+  drivetrainSetup();
+  sensorSetup();
+  armSetup();
+
+  Serial.begin(115200);
 }
 
 void loop() {
-    verticalMotorSetPower(50);
-    leftMotorSetPower(50);
-    rightMotorSetPower(50);
-    delay(2000);
-    verticalMotorSetPower(-50);
-    leftMotorSetPower(-50);
-    rightMotorSetPower(-50);
-    delay(2000);
-    verticalMotorSetPower(0);
-    leftMotorSetPower(0);
-    rightMotorSetPower(0);
+    delay(1000);
+    ledcWrite(BASE_SERVO_CHANNEL, angleToPWM(10));
+    delay(1000);
+    ledcWrite(SHOULDER_SERVO_CHANNEL, angleToPWM(10));
+    delay(1000);
+    ledcWrite(ELBOW_SERVO_CHANNEL, angleToPWM(10));
+    delay(1000);
+    ledcWrite(WRIST_SERVO_CHANNEL, angleToPWM(10));
+    delay(1000);
+    ledcWrite(CLAW_SERVO_CHANNEL, angleToPWM(10));
+    Serial.printf("%d", angleToPWM(10));
+    delay(100000);
 }
