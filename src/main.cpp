@@ -131,7 +131,10 @@ bool resetSwitchState;
 
 // Variables - States
 SwitchState currentSwitchState;
+PetState currentPetState;
 TaskState currentTaskState;
+
+StepState_PrePet currentStepState_PrePet;
 
 // Variables - PID
 double k_p = 0.1;
@@ -167,7 +170,10 @@ void setup() {
   stateSetup();
 
   currentSwitchState = SwitchState::Off;
+  currentPetState = PetState::PrePet;
   currentTaskState = TaskState::TapeFollow;
+
+  currentStepState_PrePet = StepState_PrePet::ClearDoorway;
 }
 
 void loop() {

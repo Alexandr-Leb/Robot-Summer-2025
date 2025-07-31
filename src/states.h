@@ -14,8 +14,14 @@ extern bool resetSwitchState;
 enum SwitchState {Run, Initialize, Reset, Off};
 extern SwitchState currentSwitchState;
 
+enum PetState {PrePet, Pet1, Pet2, Pet3, Pet4, Pet5, Pet6, Pet7, PostPet};
+extern PetState currentPetState;
+
 enum TaskState {TapeFollow, TapeFind};
 extern TaskState currentTaskState;
+
+enum StepState_PrePet {ClearDoorway};
+extern StepState_PrePet currentStepState_PrePet;
 
 // --- Function Headers --- //
 void stateSetup();
