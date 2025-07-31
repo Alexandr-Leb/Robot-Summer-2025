@@ -137,9 +137,9 @@ SwitchState currentSwitchState;
 TaskState currentTaskState;
 
 // Variables - PID
-double k_p = 1.5;
+double k_p = 2.0;
 double k_i = 0.0; // Not using
-double k_d = 2.0;
+double k_d = 0.0;
 double pValue;
 double iValue; // Not using
 double dValue;
@@ -162,6 +162,7 @@ int initializeStartTime; // in ms
 void pidSetup();
 void computePID();
 void runPID(int power);
+void runHysteresis(int power);
 
 void setup() {
   drivetrainSetup();
@@ -170,37 +171,40 @@ void setup() {
   pidSetup();
   stateSetup();
 
+  currentSwitchState = SwitchState::Off;
+  currentTaskState = TaskState::TapeFollow;
+
   Serial.begin(115200);
 }
 
 void loop() {
+  // readReflectanceSensors();
+  // Serial.printf("%d | %d\n", leftReflectance, rightReflectance);
   updateSwitchState();
   switch(currentSwitchState) {
     case SwitchState::Run:
-    // switch(currentTaskState) {
-    //   case TaskState::TapeFollow:
-    //   runPID(900);
-    //   if (!leftOnTape && !rightOnTape) {
-    //     currentTaskState = TaskState::TapeFind;
-    //   }
-    //   break;
+    switch(currentTaskState) {
+      case TaskState::TapeFollow:
+      runPID(800);
+      if (!leftOnTape && !rightOnTape) {
+        currentTaskState = TaskState::TapeFind;
+      }
+      break;
 
-    //   case TaskState::TapeFind:
-    //   readReflectanceSensors();
-    //   runHysteresis(900);
-    //   if (leftOnTape || rightOnTape) {
-    //     computePID();
-    //     currentTaskState = TaskState::TapeFollow;
-    //   }
-    //   break;
-    // }
-    readReflectanceSensors();
-    Serial.printf("%d | %d\n", leftReflectance, rightReflectance);
+      case TaskState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(800);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentTaskState = TaskState::TapeFollow;
+      }
+      break;
+    }
     break;
 
     case SwitchState::Initialize:
     initializeStartTime = millis();
-    while (1) {
+    while (currentSwitchState == SwitchState::Initialize) {
       updateSwitchState();
       if (millis() - initializeStartTime > INITIALIZE_TIME) {
         initializeReflectanceSensors(500);
@@ -215,7 +219,7 @@ void loop() {
     case SwitchState::Reset:
     leftMotorSetPower(0);
     rightMotorSetPower(0);
-    verticalMotorSetPower(-25);
+    verticalMotorSetPower(-2000);
     for (int i = 0; i < NUM_SERVOS; i++) {
       setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
       updateServo(&servoArray[i]);
@@ -267,6 +271,8 @@ void runPID(int power) {
 }
 
 void runHysteresis(int power) {
-  leftMotorSetPower(power + (int) (prevError * HYSTERESIS_MULTIPLIER));
-  rightMotorSetPower(power - (int) (prevError * HYSTERESIS_MULTIPLIER));
+  // leftMotorSetPower(power + (int) (prevError * HYSTERESIS_MULTIPLIER));
+  // rightMotorSetPower(power - (int) (prevError * HYSTERESIS_MULTIPLIER));
+  leftMotorSetPower(-power);
+  rightMotorSetPower(-power);
 }
