@@ -131,11 +131,11 @@ using Joint = uint8_t;
 #define WRIST_OFFSET_ANGLE 68.9758761267 // Increasing brings wrist up
 
 // Constants - Arm Setup
-double startingArmAngles[] = {93, 90, 0, 40, 90};
+double startingArmAngles[] = {90, 90, 90, 90, 90}; // was 93, 90, 0, 40, 90
 
 // Constants - Tape Following
 #define REFLECTANCE_THRESHOLD_OFFSET 400
-#define HYSTERESIS_MULTIPLIER 2
+#define HYSTERESIS_MULTIPLIER 25
 
 // Constants - Magnetometer
 #define MAGNETOMETER_THRESHOLD 260
@@ -241,7 +241,7 @@ void rightMotor_SetPower(int power); // Negative power for reverse, between -409
 void leftMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 void verticalMotor_SetPower(int power); // Negative power for reverse, between -4095 and 4095
 
-// Servo FUnctions
+// Servo Functions
 static void writeServoRaw(Joint j, float deg);
 void setJointTarget(Joint j, float deg);
 void setAllTargets(float baseDeg, float shoulderDeg, float elbowDeg, float wristDeg, float clawDeg);
@@ -278,9 +278,9 @@ void setup() {
   verticalTimeSwitch = 0;
 
   // Variables - PID
-  k_p = 3.75;
+  k_p = 1.5;
   k_i = 0.0;
-  k_d = 5;
+  k_d = 2.0;
   pValue = 0.0;
   iValue = 0.0;
   dValue = 0.0;
@@ -351,6 +351,9 @@ void setup() {
     }
     delay(5);                         
   }
+
+  Serial.begin(115200);
+  // Serial.printf("%d\n", usToDuty(angleToUs(0, clampDeg(60))));
 }
 
 // --- Loop --- //
@@ -559,28 +562,31 @@ void loop() {
     // break;
 
     case MasterState::Test: 
-    // switch(currentProcedureState) {
-    //   case ProcedureState::PreState:
-    //   initializeReflectanceSensors(500);
-    //   currentProcedureState = ProcedureState::TapeFollow;
-    //   break;
+    switch(currentProcedureState) {
+      case ProcedureState::PreState:
+      initializeReflectanceSensors(500);
+      currentProcedureState = ProcedureState::TapeFollow;
+      break;
 
-    //   case ProcedureState::TapeFollow:
-    //   runPID(1800);
-    //   if (!leftOnTape && !rightOnTape) {
-    //     currentProcedureState = ProcedureState::TapeFind;
-    //   }
-    //   break; 
+      case ProcedureState::TapeFollow:
+      runPID(900);
+      if (!leftOnTape && !rightOnTape) {
+        currentProcedureState = ProcedureState::TapeFind;
+      }
+      break; 
 
-    //   case ProcedureState::TapeFind:
-    //   readReflectanceSensors();
-    //   runHysteresis(1800);
-    //   if (leftOnTape || rightOnTape) {
-    //     computePID();
-    //     currentProcedureState = ProcedureState::TapeFollow;
-    //   }
-    //   break;
-    // }
+      case ProcedureState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(900);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentProcedureState = ProcedureState::TapeFollow;
+      }
+      break;
+    }
+
+    //verticalMotor_SetPower(2000);
+    // delay(200000);
 
     // newShoulderTarget = joints[1].currentDeg + 1;
     // newElbowTarget = computeElbowAngle(newShoulderTarget, 28.8);
@@ -590,8 +596,6 @@ void loop() {
     // if (newShoulderTarget > 160) {
     //   delay(1000000);
     // }
-
-    verticalMotor_SetPower(2000); 
     break;
 
     case MasterState::Initialize:
