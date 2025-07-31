@@ -59,7 +59,7 @@ void readReflectanceSensors();
 void readForwardReflectanceSensors();
 void readMagnetometer();
 void readTimeOfFlight();
-void initializeReflectanceSensors();
+void initializeReflectanceSensors(int initializeTime);
 
 // --- Functions --- //
 void sensorSetup() {

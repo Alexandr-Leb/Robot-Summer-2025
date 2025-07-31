@@ -245,7 +245,7 @@ void updateSwitchState() {
       currentSwitchState = SwitchState::Run;
     } else if (initializeSwitchState && !resetSwitchState) {
       if (currentSwitchState != SwitchState::Initialize) {
-        initializeReflectanceSensors();
+        initializeReflectanceSensors(500);
       }
       currentSwitchState = SwitchState::Initialize;
     } else if (resetSwitchState) {
