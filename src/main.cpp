@@ -175,7 +175,7 @@ void setup() {
 
   currentStepState_PrePet = StepState_PrePet::ClearDoorway;
 }
-
+ 
 void loop() {
   switch(currentSwitchState) {
     case SwitchState::Run:
