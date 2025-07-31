@@ -134,16 +134,16 @@ SwitchState currentSwitchState;
 TaskState currentTaskState;
 
 // Variables - PID
-double k_p = 1.5;
+double k_p = 0.1;
 double k_i = 0.0; // Not using
-double k_d = 2.0;
+double k_d = 0.0;
 double pValue;
 double iValue; // Not using
 double dValue;
 int error;
 int prevError;
 long prevTime; // in us
-double k_e = 0.2;
+double k_e = 0.0;
 double eValue;
 
 // Variables - Hysteresis
@@ -173,23 +173,23 @@ void setup() {
 void loop() {
   switch(currentSwitchState) {
     case SwitchState::Run:
-    // switch(currentTaskState) {
-    //   case TaskState::TapeFollow:
-    //   runPID(800);
-    //   if (!leftOnTape && !rightOnTape) {
-    //     currentTaskState = TaskState::TapeFind;
-    //   }
-    //   break;
+    switch(currentTaskState) {
+      case TaskState::TapeFollow:
+      runPID(800);
+      if (!leftOnTape && !rightOnTape) {
+        currentTaskState = TaskState::TapeFind;
+      }
+      break;
 
-    //   case TaskState::TapeFind:
-    //   readReflectanceSensors();
-    //   runHysteresis(800);
-    //   if (leftOnTape || rightOnTape) {
-    //     computePID();
-    //     currentTaskState = TaskState::TapeFollow;
-    //   }
-    //   break;
-    // }
+      case TaskState::TapeFind:
+      readReflectanceSensors();
+      runHysteresis(800);
+      if (leftOnTape || rightOnTape) {
+        computePID();
+        currentTaskState = TaskState::TapeFollow;
+      }
+      break;
+    }
     break;
 
     case SwitchState::Initialize:
