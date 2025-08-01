@@ -16,10 +16,6 @@
 #include "sensors.h"
 #include "states.h"
 
-// --- Constants --- //
-// Constants - PID
-const double HYSTERESIS_MULTIPLIER = 25;
-
 // --- Variables --- //
 // Variables - Motors
 Motor leftMotor = {
@@ -137,9 +133,9 @@ TaskState currentTaskState;
 StepState_PrePet currentStepState_PrePet;
 
 // Variables - PID
-double k_p = 0.1;
+double k_p = 2.15;
 double k_i = 0.0; // Not using
-double k_d = 0.0;
+double k_d = 0.85;
 double pValue;
 double iValue; // Not using
 double dValue;
@@ -148,6 +144,7 @@ int prevError;
 long prevTime; // in us
 double k_e = 0.0;
 double eValue;
+double hysteresisMultiplier = 5;
 
 // Variables - Hysteresis
 bool leftOnTape;
@@ -155,8 +152,15 @@ bool rightOnTape;
 bool prevLeftOnTape;
 bool prevRightOnTape;
 
+// Variables - Runtime
+int timeCheckpoint;
+const int LOOP_RESET = 5.0;
+int loopCounter;
+int forwardReflectanceAverageSum;
+
 // --- Function Headers --- //
 void updateSwitchState();
+void resetLoopCount();
 void pidSetup();
 void computePID();
 void runPID(int power);
@@ -170,29 +174,122 @@ void setup() {
   stateSetup();
 
   currentSwitchState = SwitchState::Off;
-  currentPetState = PetState::PrePet;
+  currentPetState = PetState::PostPet;
   currentTaskState = TaskState::TapeFollow;
 
   currentStepState_PrePet = StepState_PrePet::ClearDoorway;
+
+  Serial.begin(115200);
 }
  
 void loop() {
   switch(currentSwitchState) {
     case SwitchState::Run:
-    switch(currentTaskState) {
-      case TaskState::TapeFollow:
-      runPID(800);
-      if (!leftOnTape && !rightOnTape) {
-        currentTaskState = TaskState::TapeFind;
+    loopCounter++;
+    if (loopCounter == LOOP_RESET) {
+      resetLoopCount();
+    }
+    switch(currentPetState) {
+      case PetState::PostPet:
+      if (millis() - timeCheckpoint > 2000) {
+        currentPetState = PetState::PrePet;
+      }
+      switch(currentTaskState) {
+        case TaskState::TapeFollow:
+        runPID(800);
+        if (!leftOnTape && !rightOnTape) {
+          currentTaskState = TaskState::TapeFind;
+        }
+        break;
+
+        case TaskState::TapeFind:
+        readReflectanceSensors();
+        leftMotorSetPower(-800);
+        rightMotorSetPower(-800);
+        if (leftOnTape || rightOnTape) {
+          computePID();
+          currentTaskState = TaskState::TapeFollow;
+        }
+        break;
       }
       break;
 
-      case TaskState::TapeFind:
-      readReflectanceSensors();
-      runHysteresis(800);
-      if (leftOnTape || rightOnTape) {
-        computePID();
-        currentTaskState = TaskState::TapeFollow;
+      case PetState::PrePet:
+      readForwardReflectanceSensors();
+      forwardReflectanceAverageSum += forwardLeftReflectance;
+      if (loopCounter == LOOP_RESET - 1 && forwardReflectanceAverageSum < 1500) {
+        servoGoTo(&clawServo, 50);
+        hysteresisMultiplier = 50.0;
+        currentPetState = PetState::Pet1;
+        timeCheckpoint = millis();
+      }
+      switch(currentTaskState) {
+        case TaskState::TapeFollow:
+        runPID(600);
+        if (!leftOnTape && !rightOnTape) {
+          currentTaskState = TaskState::TapeFind;
+        }
+        break;
+
+        case TaskState::TapeFind:
+        readReflectanceSensors();
+        leftMotorSetPower(-600);
+        rightMotorSetPower(-600);
+        if (leftOnTape || rightOnTape) {
+          computePID();
+          currentTaskState = TaskState::TapeFollow;
+        }
+        break;
+      }
+      break;
+
+      case PetState::Pet1:
+      if (millis() - timeCheckpoint > 500) {
+        currentPetState = Pet2;
+      }
+      switch(currentTaskState) {
+        case TaskState::TapeFollow:
+        runPID(800);
+        if (!leftOnTape && !rightOnTape) {
+          currentTaskState = TaskState::TapeFind;
+        }
+        break;
+
+        case TaskState::TapeFind:
+        readReflectanceSensors();
+        runHysteresis(800);
+        if (leftOnTape || rightOnTape) {
+          computePID();
+          currentTaskState = TaskState::TapeFollow;
+        }
+        break;
+      }
+      break;
+
+      case PetState::Pet2:
+      // readForwardReflectanceSensors();
+      // forwardReflectanceAverageSum += forwardLeftReflectance;
+      // if (loopCounter == LOOP_RESET - 1 && forwardReflectanceAverageSum > 1800 * 5 && forwardReflectanceAverageSum < 3000 * 5) {
+      //   leftMotorSetPower(0);
+      //   rightMotorSetPower(0);
+      //   delay(1000000);
+      // }
+      switch(currentTaskState) {
+        case TaskState::TapeFollow:
+        runPID(1600);
+        if (!leftOnTape && !rightOnTape) {
+          currentTaskState = TaskState::TapeFind;
+        }
+        break;
+
+        case TaskState::TapeFind:
+        readReflectanceSensors();
+        runHysteresis(1600);
+        if (leftOnTape || rightOnTape) {
+          computePID();
+          currentTaskState = TaskState::TapeFollow;
+        }
+        break;
       }
       break;
     }
@@ -243,6 +340,8 @@ void updateSwitchState() {
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
       currentSwitchState = SwitchState::Run;
+      loopCounter = 0;
+      timeCheckpoint = millis();
     } else if (initializeSwitchState && !resetSwitchState) {
       if (currentSwitchState != SwitchState::Initialize) {
         initializeReflectanceSensors(500);
@@ -253,6 +352,11 @@ void updateSwitchState() {
     } else {
       currentSwitchState = SwitchState::Off;
     }
+}
+
+void resetLoopCount() {
+  loopCounter = 0;
+  forwardReflectanceAverageSum = 0;
 }
 
 void pidSetup() {
@@ -287,8 +391,8 @@ void runPID(int power) {
 }
 
 void runHysteresis(int power) {
-  // leftMotorSetPower(power + (int) (prevError * HYSTERESIS_MULTIPLIER));
-  // rightMotorSetPower(power - (int) (prevError * HYSTERESIS_MULTIPLIER));
-  leftMotorSetPower(-power);
-  rightMotorSetPower(-power);
+  leftMotorSetPower(power + (int) (prevError * hysteresisMultiplier));
+  rightMotorSetPower(power - (int) (prevError * hysteresisMultiplier));
+  //leftMotorSetPower(-power);
+  //rightMotorSetPower(-power);
 }
