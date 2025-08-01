@@ -16,6 +16,9 @@
 #include "sensors.h"
 #include "states.h"
 
+// --- Constants --- //
+const int REFLECTANCE_COMPARISON_THRESHOLD = 150;
+
 // --- Variables --- //
 // Variables - Motors
 Motor leftMotor = {
@@ -132,6 +135,7 @@ PetState currentPetState;
 TaskState currentTaskState;
 
 StepState_PrePet currentStepState_PrePet;
+StepState_Pet1 currentStepState_Pet1;
 
 // Variables - PID
 double k_p;
@@ -156,6 +160,11 @@ bool prevRightOnTape;
 // Variables - Runtime
 int loopCounter;
 int timeCheckpoint;
+
+// --- Runtime Parameters --- //
+// Runtime Parameters - PrePet
+const int STOP_TIME_AFTER_GATE = 1000;
+const int LIFT_BASKET_TIME = 3000;
 
 // --- Function Headers --- //
 void initializeState();
@@ -182,7 +191,7 @@ void setup() {
   currentStepState_PrePet = StepState_PrePet::ClearDoorway;
 
   currentTaskState = TaskState::TapeFollow;
-  setPIDValues(1.0, 0.0, 0.0, 0.0);
+  setPIDValues(2.1, 0.5, 0.0, 0.0);
 
   Serial.begin(115200);
 }
@@ -201,20 +210,57 @@ void loop() {
 
         // --- Begin ClearDoorway --- //
         case StepState_PrePet::ClearDoorway:
-        runPID_withBackup(700);
+        runPID_withBackup(900);
         if (timeOfFlightReading < 40) {
-          drivetrainSetPower(0);
-          delay(1000);
+          Serial.printf("Changing to Stop state");
+          currentStepState_PrePet = StepState_PrePet::Stop;
+          timeCheckpoint = millis();
         }
         break;
-        // readReflectanceSensors();
-        // Serial.printf("%d | %d | %d | %d\n", leftReflectance, rightReflectance, leftReflectanceThreshold, rightReflectanceThreshold);
-        // delay(200);
         // --- End ClearDoorway --- //
+
+        // --- Begin Stop --- //
+        case StepState_PrePet::Stop:
+        runPID_withBackup(900);
+        if (millis() - timeCheckpoint > STOP_TIME_AFTER_GATE) {
+          Serial.printf("Changing to LiftBasket state | %d | %d\n", timeCheckpoint, millis());
+          drivetrainSetPower(0);
+          currentStepState_PrePet = StepState_PrePet::LiftBasket;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End Stop --- //
+
+        // --- Begin LifBasket --- //
+        case StepState_PrePet::LiftBasket:
+        verticalMotorSetPower(2000);
+        if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
+          Serial.printf("Changing to TurnArm state | %d | %d\n", timeCheckpoint, millis());
+          verticalMotorSetPower(0);
+          currentStepState_PrePet = StepState_PrePet::TurnArm;
+        }
+        break;
+        // --- End LiftBasket --- //
+
+        // --- Begin TurnArm --- //
+        case StepState_PrePet::TurnArm:
+        setServoTarget(&baseServo, 170);
+        updateServos();
+        if (servoDone(&baseServo)) {
+          currentPetState = PetState::Pet1;
+        }
+        break;
+        // --- End TurnArm --- //
 
       }
       break;
       // --- End PrePet --- //
+
+      // --- Begin Pet1 --- //
+      case PetState::Pet1:
+      delay(100000);
+      break;
+      // --- End Pet1 --- //
 
     }
     break;
@@ -267,6 +313,12 @@ void offState() {
     setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
     updateServo(&servoArray[i]);
   }
+  readReflectanceSensors();
+  if (abs(leftReflectance - rightReflectance) < REFLECTANCE_COMPARISON_THRESHOLD) {
+    servoGoTo(&clawServo, 60);
+  } else {
+    servoGoTo(&clawServo, SERVO_STARTING_ANGLES[4]);
+  }
   updateSwitchState();
 }
 
@@ -278,6 +330,7 @@ void updateSwitchState() {
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
       currentSwitchState = SwitchState::Run;
+      servoGoTo(&clawServo, SERVO_STARTING_ANGLES[NUM_SERVOS - 1]);
       loopCounter = 0;
       timeCheckpoint = millis();
     } else if (initializeSwitchState && !resetSwitchState) {

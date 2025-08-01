@@ -23,6 +23,9 @@ extern TaskState currentTaskState;
 enum StepState_PrePet {ClearDoorway, Stop, LiftBasket, TurnArm};
 extern StepState_PrePet currentStepState_PrePet;
 
+enum StepState_Pet1 {FindRamp, ClimbRamp};
+extern StepState_Pet1 currentStepState_Pet1;
+
 // --- Function Headers --- //
 void stateSetup();
 void switchSetup();

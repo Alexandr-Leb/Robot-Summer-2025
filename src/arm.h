@@ -16,7 +16,7 @@ const double SERVO_PWM_PERIOD = 1000 / SERVO_PWM_FREQUENCY; // in ms
 const double MIN_MS = 0.550; // in ms
 const double MAX_MS = 2.450; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
-const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {87, 120, 60, 0, 110}; // in degrees
+const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {87, 120, 60, 0, 120}; // in degrees
 const double SERVO_STARTING_SPEED = 0.15; // in degrees/ms
 const double SERVO_MAX_ANGLE_CHANGE = 0.8; // in degrees
 
