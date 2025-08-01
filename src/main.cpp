@@ -179,15 +179,9 @@ void setup() {
   currentTaskState = TaskState::TapeFollow;
 
   currentStepState_PrePet = StepState_PrePet::ClearDoorway;
-
-  Serial.begin(115200);
 }
  
 void loop() {
-  timeCheckpoint = millis();
-  Serial.printf("%d | %d\n", timeOfFlightReading, millis() - timeCheckpoint);
-
-  /*
   timeCheckpoint = micros();
   switch(currentSwitchState) {
 
@@ -203,7 +197,7 @@ void loop() {
         case StepState_PrePet::ClearDoorway:
         switch(currentTaskState) {
           case TaskState::TapeFollow:
-          runPID(700);
+          runPID(800);
           if (!leftOnTape && !rightOnTape) {
             currentTaskState = TaskState::TapeFind;
           }
@@ -211,21 +205,16 @@ void loop() {
 
           case TaskState::TapeFind:
           readReflectanceSensors();
-          drivetrainSetPower(-700);
+          drivetrainSetPower(-800);
           if (leftOnTape || rightOnTape) {
             computePID();
             currentTaskState = TaskState::TapeFollow;
           }
-          break;
+          break; 
         }
-        loopCounter++;
-        if (loopCounter == LOOP_RESET) {
-          loopCounter = 0;
-        }
-        if (loopCounter == LOOP_RESET - 1) {
-          if (tof.readRange() < 100) {
-            drivetrainSetPower(0);
-          }
+        if (timeOfFlightReading < 40) {
+          drivetrainSetPower(0);
+          delay(2000);
         }
         break;
         // --- End ClearDoorway --- //
@@ -272,8 +261,6 @@ void loop() {
     updateSwitchState();
     break;
   }
-  Serial.printf("%d\n", micros() - timeCheckpoint);
-  */
 }
 
 // --- Functions --- //
