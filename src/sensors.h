@@ -42,7 +42,8 @@ extern int magnetometerAverageCount;
 
 // Variables - Time of Flight
 extern Adafruit_VL6180X tof;
-extern uint8_t timeOfFlightReading;
+extern SemaphoreHandle_t i2cMutex;
+extern volatile uint16_t timeOfFlightReading;
 
 // Variables - Hysteresis
 extern bool leftOnTape;
@@ -58,8 +59,9 @@ void timeOfFlightSetup();
 void readReflectanceSensors();
 void readForwardReflectanceSensors();
 void readMagnetometer();
-void readTimeOfFlight();
+// void readTimeOfFlight();
 void initializeReflectanceSensors(int initializeTime);
+void ToFTask(void *pv);
 
 // --- Functions --- //
 void sensorSetup() {
@@ -101,10 +103,16 @@ void magnetometerSetup() {
 
 void timeOfFlightSetup() {
   // Sensor Setup
-  tof.begin();
+  i2cMutex = xSemaphoreCreateMutex();          // create before tasks
 
-  // Variables Initialization
-  timeOfFlightReading = 0.0;
+  /* Kick the task onto core-0 (0 = PRO_CPU, 1 = APP_CPU)  */
+  xTaskCreatePinnedToCore(ToFTask,             // task code
+                          "VL6180_reader",     // name (for diagnostics)
+                          4096,                // stack bytes
+                          nullptr,             // parameter
+                          1,                   // priority (idle+1 is fine)
+                          nullptr,             // task handle
+                          0);
 }
 
 void readReflectanceSensors() {
@@ -132,11 +140,9 @@ void readMagnetometer() {
   magnetometerMagnitude = (double) sqrt(x * x + y * y + z * z);
 }
 
-void readTimeOfFlight() {
-  if (tof.isRangeComplete() == true) {
-    timeOfFlightReading = tof.readRange();
-  }
-}
+// void readTimeOfFlight() {
+//   tof.readRange();
+// }
 
 void initializeReflectanceSensors(int initializeTime) {
   int startTime = millis();
@@ -151,4 +157,26 @@ void initializeReflectanceSensors(int initializeTime) {
   rightReflectanceThreshold = (int) ((double) rightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
   forwardLeftReflectanceThreshold = (int) ((double) forwardLeftReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
   forwardRightReflectanceThreshold = (int) ((double) forwardRightReflectanceThresholdSum / reflectanceAverageLoopCounter) + REFLECTANCE_THRESHOLD_OFFSET;
+}
+
+void ToFTask(void *pv) {
+  Adafruit_VL6180X tof;                        // local = core-0 only
+  if (!tof.begin()) {
+    Serial.println("VL6180X NOT FOUND – task ends");
+    vTaskDelete(NULL);                         // kill task if sensor absent
+  }
+
+  const TickType_t period = pdMS_TO_TICKS(40); // ~25 Hz
+  TickType_t lastWake = xTaskGetTickCount();
+
+  for (;;) {
+    // 1 ⟶ take bus,  2 ⟶ read,  3 ⟶ release
+    xSemaphoreTake(i2cMutex, portMAX_DELAY);
+    uint8_t range = tof.readRange();           // blocking (≈10 ms max)
+    xSemaphoreGive(i2cMutex);
+
+    timeOfFlightReading = range;                    // update global
+
+    vTaskDelayUntil(&lastWake, period);        // precise 25 Hz cadence
+  }
 }

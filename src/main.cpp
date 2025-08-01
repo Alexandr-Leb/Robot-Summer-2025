@@ -70,7 +70,8 @@ int magnetometerAverageCount;
 
 // Variables - Time of Flight
 Adafruit_VL6180X tof = Adafruit_VL6180X();
-uint8_t timeOfFlightReading;
+SemaphoreHandle_t i2cMutex;
+uint16_t volatile timeOfFlightReading;
 
 // Variables - Servos
 Servo baseServo = {
@@ -183,6 +184,10 @@ void setup() {
 }
  
 void loop() {
+  timeCheckpoint = millis();
+  Serial.printf("%d | %d\n", timeOfFlightReading, millis() - timeCheckpoint);
+
+  /*
   timeCheckpoint = micros();
   switch(currentSwitchState) {
 
@@ -268,6 +273,7 @@ void loop() {
     break;
   }
   Serial.printf("%d\n", micros() - timeCheckpoint);
+  */
 }
 
 // --- Functions --- //
