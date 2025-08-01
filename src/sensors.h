@@ -133,7 +133,9 @@ void readMagnetometer() {
 }
 
 void readTimeOfFlight() {
-  timeOfFlightReading = tof.readRange();
+  if (tof.isRangeComplete() == true) {
+    timeOfFlightReading = tof.readRange();
+  }
 }
 
 void initializeReflectanceSensors(int initializeTime) {
