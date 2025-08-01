@@ -134,18 +134,18 @@ TaskState currentTaskState;
 StepState_PrePet currentStepState_PrePet;
 
 // Variables - PID
-double k_p = 1.0;
-double k_i = 0.0; // Not using
-double k_d = 0.0;
+double k_p;
+double k_i; // Not using
+double k_d;
 double pValue;
 double iValue; // Not using
 double dValue;
 int error;
 int prevError;
 long prevTime; // in us
-double k_e = 0.0;
+double k_e;
 double eValue;
-double hysteresisMultiplier = 0;
+double hysteresisMultiplier;
 
 // Variables - Hysteresis
 bool leftOnTape;
@@ -184,7 +184,7 @@ void setup() {
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(1.0, 0.0, 0.0, 0.0);
 }
- 
+
 void loop() {
   timeCheckpoint = micros();
   switch(currentSwitchState) {
