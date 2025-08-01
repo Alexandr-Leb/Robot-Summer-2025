@@ -33,6 +33,7 @@ void leftMotorSetPower(int power);
 void rightMotorSetPower(int power);
 void verticalMotorSetPower(int power);
 void motorSetPower(Motor *motor, int power);
+void drivetrainSetPower(int power);
 
 // --- Functions --- //
 void drivetrainSetup() {
@@ -107,4 +108,9 @@ void motorSetPower(Motor *motor, int power) {
     ledcWrite(motor->FORWARDS_CHANNEL, 0);
     ledcWrite(motor->REVERSE_CHANNEL, 0);
   }
+}
+
+void drivetrainSetPower(int power) {
+  leftMotorSetPower(power);
+  rightMotorSetPower(power);
 }
