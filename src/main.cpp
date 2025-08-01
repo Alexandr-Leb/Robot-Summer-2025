@@ -183,6 +183,8 @@ void setup() {
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(1.0, 0.0, 0.0, 0.0);
+
+  Serial.begin(115200);
 }
 
 void loop() {
@@ -200,7 +202,14 @@ void loop() {
         // --- Begin ClearDoorway --- //
         case StepState_PrePet::ClearDoorway:
         runPID_withBackup(700);
+        if (timeOfFlightReading < 40) {
+          drivetrainSetPower(0);
+          delay(1000);
+        }
         break;
+        // readReflectanceSensors();
+        // Serial.printf("%d | %d | %d | %d\n", leftReflectance, rightReflectance, leftReflectanceThreshold, rightReflectanceThreshold);
+        // delay(200);
         // --- End ClearDoorway --- //
 
       }

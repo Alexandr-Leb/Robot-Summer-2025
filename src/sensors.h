@@ -12,7 +12,7 @@
 
 // --- Constants --- //
 // Constants - Reflectance Sensor
-const int REFLECTANCE_THRESHOLD_OFFSET = 300;
+const int REFLECTANCE_THRESHOLD_OFFSET = -200;
 
 // --- Variables --- //
 // Variables - Reflectance Sensor
