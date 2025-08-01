@@ -134,9 +134,9 @@ TaskState currentTaskState;
 StepState_PrePet currentStepState_PrePet;
 
 // Variables - PID
-double k_p = 2.15;
+double k_p = 1.0;
 double k_i = 0.0; // Not using
-double k_d = 0.85;
+double k_d = 0.0;
 double pValue;
 double iValue; // Not using
 double dValue;
@@ -145,7 +145,7 @@ int prevError;
 long prevTime; // in us
 double k_e = 0.0;
 double eValue;
-double hysteresisMultiplier = 5;
+double hysteresisMultiplier = 0;
 
 // Variables - Hysteresis
 bool leftOnTape;
@@ -154,17 +154,19 @@ bool prevLeftOnTape;
 bool prevRightOnTape;
 
 // Variables - Runtime
-int timeCheckpoint;
-const int LOOP_RESET = 5000;
 int loopCounter;
-int forwardReflectanceAverageSum;
+int timeCheckpoint;
 
 // --- Function Headers --- //
+void initializeState();
+void resetState();
+void offState();
 void updateSwitchState();
-void resetLoopCount();
+void runPID_withBackup(int power);
+void runPID_withHysteresis(int power);
+void setPIDValues(double p, double d, double hysteresis, double e);
 void pidSetup();
 void computePID();
-void runPID(int power);
 void runHysteresis(int power);
 
 void setup() {
@@ -176,9 +178,11 @@ void setup() {
 
   currentSwitchState = SwitchState::Off;
   currentPetState = PetState::PrePet;
-  currentTaskState = TaskState::TapeFollow;
 
   currentStepState_PrePet = StepState_PrePet::ClearDoorway;
+
+  currentTaskState = TaskState::TapeFollow;
+  setPIDValues(1.0, 0.0, 0.0, 0.0);
 }
  
 void loop() {
@@ -195,27 +199,7 @@ void loop() {
 
         // --- Begin ClearDoorway --- //
         case StepState_PrePet::ClearDoorway:
-        switch(currentTaskState) {
-          case TaskState::TapeFollow:
-          runPID(800);
-          if (!leftOnTape && !rightOnTape) {
-            currentTaskState = TaskState::TapeFind;
-          }
-          break;
-
-          case TaskState::TapeFind:
-          readReflectanceSensors();
-          drivetrainSetPower(-800);
-          if (leftOnTape || rightOnTape) {
-            computePID();
-            currentTaskState = TaskState::TapeFollow;
-          }
-          break; 
-        }
-        if (timeOfFlightReading < 40) {
-          drivetrainSetPower(0);
-          delay(2000);
-        }
+        runPID_withBackup(700);
         break;
         // --- End ClearDoorway --- //
 
@@ -227,43 +211,56 @@ void loop() {
     break;
     // --- End Run --- //
 
+    // --- Other Switch Cases --- //
     case SwitchState::Initialize:
-    // Reflectance initialized upon entering state
-    leftMotorSetPower(0);
-    rightMotorSetPower(0);
-    verticalMotorSetPower(0);
-    for (int i = 0; i < NUM_SERVOS; i++) {
-      setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
-      updateServo(&servoArray[i]);
-    }
-    updateSwitchState();
+    initializeState();
     break;
 
     case SwitchState::Reset:
-    leftMotorSetPower(0);
-    rightMotorSetPower(0);
-    verticalMotorSetPower(-2000);
-    for (int i = 0; i < NUM_SERVOS; i++) {
-      setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
-      updateServo(&servoArray[i]);
-    }
-    updateSwitchState();
+    resetState();
     break;
 
     case SwitchState::Off:
-    leftMotorSetPower(0);
-    rightMotorSetPower(0);
-    verticalMotorSetPower(0);
-    for (int i = 0; i < NUM_SERVOS; i++) {
-      setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
-      updateServo(&servoArray[i]);
-    }
-    updateSwitchState();
+    offState();
     break;
   }
 }
 
 // --- Functions --- //
+void initializeState() {
+  // Reflectance initialized upon entering state
+  leftMotorSetPower(0);
+  rightMotorSetPower(0);
+  verticalMotorSetPower(0);
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+    updateServo(&servoArray[i]);
+  }
+  updateSwitchState();
+}
+
+void resetState() {
+  leftMotorSetPower(0);
+  rightMotorSetPower(0);
+  verticalMotorSetPower(-2000);
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+    updateServo(&servoArray[i]);
+  }
+  updateSwitchState();
+}
+
+void offState() {
+  leftMotorSetPower(0);
+  rightMotorSetPower(0);
+  verticalMotorSetPower(0);
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    setServoTarget(&servoArray[i], SERVO_STARTING_ANGLES[i]);
+    updateServo(&servoArray[i]);
+  }
+  updateSwitchState();
+}
+
 void updateSwitchState() {
     // Read switch states
     initializeSwitchState = !((bool) digitalRead(INITIALIZE_SWITCH_PIN));
@@ -286,13 +283,60 @@ void updateSwitchState() {
     }
 }
 
-void resetLoopCount() {
-  loopCounter = 0;
-  forwardReflectanceAverageSum = 0;
+void runPID_withBackup(int power) {
+  switch(currentTaskState) {
+    case TaskState::TapeFollow:
+    readReflectanceSensors();
+    computePID();
+    leftMotorSetPower((int) (power + pValue + dValue - abs(eValue)));
+    rightMotorSetPower((int) (power - pValue - dValue - abs(eValue)));
+    if (!leftOnTape && !rightOnTape) {
+      currentTaskState = TaskState::TapeFind;
+    }
+    break;
+
+    case TaskState::TapeFind:
+    readReflectanceSensors();
+    drivetrainSetPower(-700);
+    if (leftOnTape && rightOnTape) {
+      computePID();
+      currentTaskState = TaskState::TapeFollow;
+    }
+    break; 
+  }
+}
+
+void runPID_withHysteresis(int power) {
+  switch(currentTaskState) {
+    case TaskState::TapeFollow:
+    readReflectanceSensors();
+    computePID();
+    leftMotorSetPower((int) (power + pValue + dValue - abs(eValue)));
+    rightMotorSetPower((int) (power - pValue - dValue - abs(eValue)));
+    if (!leftOnTape && !rightOnTape) {
+      currentTaskState = TaskState::TapeFind;
+    }
+    break;
+
+    case TaskState::TapeFind:
+    readReflectanceSensors();
+    runHysteresis(power);
+    if (leftOnTape && rightOnTape) {
+      computePID();
+      currentTaskState = TaskState::TapeFollow;
+    }
+    break; 
+  }
+}
+
+void setPIDValues(double p, double d, double hysteresis, double e) {
+  k_p = p;
+  k_d = d;
+  hysteresisMultiplier = hysteresis;
+  k_e = e;
 }
 
 void pidSetup() {
-  // Variables Setup
   pValue = 0.0;
   iValue = 0.0;
   dValue = 0.0;
@@ -313,13 +357,6 @@ void computePID() {
   eValue = k_e * (double) error;
   prevTime = micros();
   prevError = error;
-}
-
-void runPID(int power) {
-  readReflectanceSensors();
-  computePID();
-  leftMotorSetPower((int) (power + pValue + dValue - abs(eValue)));
-  rightMotorSetPower((int) (power - pValue - dValue - abs(eValue)));
 }
 
 void runHysteresis(int power) {
