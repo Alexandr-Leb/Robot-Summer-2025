@@ -159,7 +159,7 @@ bool prevRightOnTape;
 
 // Variables - Runtime
 int loopCounter;
-int timeCheckpoint;
+unsigned long timeCheckpoint;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
@@ -195,7 +195,7 @@ void setup() {
 
   Serial.begin(115200);
 }
-
+  
 void loop() {
   timeCheckpoint = micros();
   switch(currentSwitchState) {
@@ -212,12 +212,12 @@ void loop() {
         case StepState_PrePet::ClearDoorway:
         runPID_withBackup(900);
         if (timeOfFlightReading < 40) {
-          Serial.printf("Changing to Stop state");
+          Serial.printf("Changing to Stop state | %d\n", millis());
           currentStepState_PrePet = StepState_PrePet::Stop;
           timeCheckpoint = millis();
         }
         break;
-        // --- End ClearDoorway --- //
+        // --- End ClearDoorway --- // 
 
         // --- Begin Stop --- //
         case StepState_PrePet::Stop:
