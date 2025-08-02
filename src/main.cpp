@@ -196,11 +196,13 @@ void setup() {
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(2.1, 0.5, 0.0, 0.0);
+
+  Serial.begin(115200);
 }
   
 void loop() {
   switch(currentSwitchState) {
-
+ 
     // --- Begin Run --- //
     case SwitchState::Run:
     switch(currentPetState) {
