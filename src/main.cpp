@@ -163,8 +163,7 @@ unsigned long timeCheckpoint;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
-const int STOP_TIME_AT_GATE = 500;
-const int GATE_CLEAR_TIME = 0; // was 1000
+const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
 const int LIFT_BASKET_TIME = 3200;
@@ -215,29 +214,18 @@ void loop() {
         case StepState_PrePet::FindGate:
         runPID_withBackup(900);
         if (timeOfFlightReading < 60) {
-          currentStepState_PrePet = StepState_PrePet::Stop;
-          drivetrainSetPower(0);
-          timeCheckpoint = millis();
-        }
-        break;
-        // --- End FindGate --- // 
-
-        // --- Begin Stop --- //
-        case StepState_PrePet::Stop:
-        if (millis() - timeCheckpoint > STOP_TIME_AT_GATE) {
           currentStepState_PrePet = StepState_PrePet::ClearDoorway;
           setPIDValues(1.2, 0.0, 0.0, 0.0);
           timeCheckpoint = millis();
         }
         break;
-        // --- End Stop --- //
+        // --- End FindGate --- //
 
         // --- Begin ClearDoorway --- //
         case StepState_PrePet::ClearDoorway:
         runPID_withBackup(700);
         if (millis() - timeCheckpoint > GATE_CLEAR_TIME) {
           currentStepState_PrePet = StepState_PrePet::TurnArm;
-          drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
@@ -327,7 +315,7 @@ void loop() {
         break;
         // --- End PetFound --- //
 
-        // --- Begin PetGrab --- //
+        // --- Begin PetGrab --- // 
         case StepState_Pet1::PetGrab:
         delay(100000);
         break;
