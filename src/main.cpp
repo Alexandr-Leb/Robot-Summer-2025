@@ -164,7 +164,7 @@ unsigned long timeCheckpoint;
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
 const int STOP_TIME_AT_GATE = 500;
-const int GATE_CLEAR_TIME = 1000;
+const int GATE_CLEAR_TIME = 0; // was 1000
 
 // Runtime Parameters - Pet1
 const int LIFT_BASKET_TIME = 3200;
@@ -249,7 +249,7 @@ void loop() {
         updateServos();
         if (allServosDone()) {
           currentPetState = PetState::Pet1;
-          setPIDValues(1.2, 0.0, 0.0, 0.0);
+          setPIDValues(2.1, 0.5, 0.0, 0.0);
           timeCheckpoint = millis();
         }
         break;
@@ -265,8 +265,8 @@ void loop() {
 
         // --- Begin FindTarget --- //
         case StepState_Pet1::FindTarget:
-        runPID_withBackup(700);
-        if (timeOfFlightReading < 120) {
+        runPID_withBackup(900);
+        if (timeOfFlightReading < 80) {
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
@@ -287,12 +287,13 @@ void loop() {
 
         // --- Begin ArmSearchPreset --- //
         case StepState_Pet1::ArmSearchPreset:
-        setServoTarget(&baseServo, 40);
+        setServoTarget(&baseServo, 90);
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetSearch;
           maxMagnetometerReading = 0.0;
           maxMagnetometerBaseAngle = baseServo.currentAngle;
+          baseServo.speed = 0.02;
           timeCheckpoint = millis();
         }
         break;
@@ -300,7 +301,7 @@ void loop() {
 
         // --- Begin PetSearch --- //
         case StepState_Pet1::PetSearch:
-        setServoTarget(&baseServo, 80);
+        setServoTarget(&baseServo, 30);
         updateServo(&baseServo);
         readMagnetometer();
         if (magnetometerMagnitude > maxMagnetometerReading) {
@@ -309,6 +310,7 @@ void loop() {
         } 
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetFound;
+          baseServo.speed = SERVO_STARTING_SPEED;
           timeCheckpoint = millis();
         }
         break;
@@ -328,11 +330,6 @@ void loop() {
         // --- Begin PetGrab --- //
         case StepState_Pet1::PetGrab:
         delay(100000);
-        // if (millis() - timeCheckpoint > 50) {
-        //   baseServo.targetAngle++;
-        //   timeCheckpoint = millis();
-        // }
-        // if (timeOfFlightReading < 20 || baseServo.targetAngle > 170) {}
         break;
         // --- End PetGrab --- //
 
