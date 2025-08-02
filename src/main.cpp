@@ -235,9 +235,9 @@ void loop() {
         case StepState_PrePet::TurnArm:
         setAllServoTargets(60, 60, 175, 140, 120);
         updateServos();
+        runPID_withBackup(700);
         if (allServosDone()) {
           currentPetState = PetState::Pet1;
-          setPIDValues(2.1, 0.5, 0.0, 0.0);
           timeCheckpoint = millis();
         }
         break;
@@ -253,7 +253,7 @@ void loop() {
 
         // --- Begin FindTarget --- //
         case StepState_Pet1::FindTarget:
-        runPID_withBackup(900);
+        runPID_withBackup(700);
         if (timeOfFlightReading < 80) {
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
           drivetrainSetPower(0);
