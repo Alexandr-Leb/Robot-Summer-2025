@@ -324,11 +324,12 @@ void loop() {
 
         // --- Begin PetGrab --- //
         case StepState_Pet1::PetGrab:
-        if (millis() - timeCheckpoint > 50) {
-          baseServo.targetAngle++;
-          timeCheckpoint = millis();
-        }
-        if (timeOfFlightReading < 20 || baseServo.targetAngle > 170) {}
+        delay(100000);
+        // if (millis() - timeCheckpoint > 50) {
+        //   baseServo.targetAngle++;
+        //   timeCheckpoint = millis();
+        // }
+        // if (timeOfFlightReading < 20 || baseServo.targetAngle > 170) {}
         break;
         // --- End PetGrab --- //
 
