@@ -163,7 +163,7 @@ unsigned long timeCheckpoint;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
-const int STOP_TIME_AT_GATE = 1000;
+const int STOP_TIME_AT_GATE = 500;
 const int GATE_CLEAR_TIME = 1000;
 
 // Runtime Parameters - Pet1
@@ -214,7 +214,7 @@ void loop() {
         // --- Begin FindGate --- //
         case StepState_PrePet::FindGate:
         runPID_withBackup(900);
-        if (timeOfFlightReading < 40) {
+        if (timeOfFlightReading < 60) {
           currentStepState_PrePet = StepState_PrePet::Stop;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
@@ -245,9 +245,9 @@ void loop() {
 
         // --- Begin TurnArm --- //
         case StepState_PrePet::TurnArm:
-        setServoTarget(&baseServo, 30.0);
-        updateServo(&baseServo);
-        if (servoDone(&baseServo)) {
+        setAllServoTargets(60, 60, 175, 140, 120);
+        updateServos();
+        if (allServosDone()) {
           currentPetState = PetState::Pet1;
           setPIDValues(1.2, 0.0, 0.0, 0.0);
           timeCheckpoint = millis();
@@ -279,6 +279,7 @@ void loop() {
         verticalMotorSetPower(2000);
         if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
           currentStepState_Pet1 = StepState_Pet1::ArmSearchPreset;
+          verticalMotorSetPower(0);
           timeCheckpoint = millis();
         }
         break;
@@ -286,7 +287,7 @@ void loop() {
 
         // --- Begin ArmSearchPreset --- //
         case StepState_Pet1::ArmSearchPreset:
-        setServoTarget(&baseServo, 20);
+        setServoTarget(&baseServo, 40);
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetSearch;
@@ -299,7 +300,7 @@ void loop() {
 
         // --- Begin PetSearch --- //
         case StepState_Pet1::PetSearch:
-        setServoTarget(&baseServo, 40);
+        setServoTarget(&baseServo, 80);
         updateServo(&baseServo);
         readMagnetometer();
         if (magnetometerMagnitude > maxMagnetometerReading) {
