@@ -66,9 +66,11 @@ void setAllServoTargets(double base, double shoulder, double elbow, double wrist
 }
 
 void updateServos() {
-  for (int i  = 0; i < NUM_SERVOS; i++) {
-    updateServo(&servoArray[i]);
-  }
+  updateServo(&baseServo);
+  updateServo(&shoulderServo);
+  updateServo(&elbowServo);
+  updateServo(&wristServo);
+  updateServo(&clawServo);
 }
 
 bool allServosDone() {
@@ -86,6 +88,8 @@ void setServoTarget(Servo *servo, double angle) {
 
 void updateServo(Servo *servo) {
   if (!servoDone(servo)) {
+    double servoTargetAngle = servo->targetAngle;
+
     int deltaTime = millis() - servo->timeUpdated; // in ms
     if (deltaTime == 0) {
       return;
@@ -101,6 +105,8 @@ void updateServo(Servo *servo) {
     } else {
       servoGoTo(servo, servo->currentAngle + nextAngleChange);
     }
+
+    servo->targetAngle = servoTargetAngle;
   }
 }
 

@@ -36,10 +36,6 @@ extern int reflectanceAverageLoopCounter;
 extern Adafruit_LIS3MDL lis;
 extern double magnetometerMagnitude;
 
-// Variables - Magnetometer Average Calculations
-extern double magnetometerMagnitudeSum;
-extern int magnetometerAverageCount;
-
 // Variables - Time of Flight
 extern Adafruit_VL6180X tof;
 extern SemaphoreHandle_t i2cMutex;

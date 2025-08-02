@@ -67,9 +67,9 @@ int reflectanceAverageLoopCounter;
 Adafruit_LIS3MDL lis;
 double magnetometerMagnitude;
 
-// Variables - Magnetometer Average Calculations
-double magnetometerMagnitudeSum;
-int magnetometerAverageCount;
+// Variables - Magnetometer Maximum
+double maxMagnetometerReading;
+double maxMagnetometerBaseAngle;
 
 // Variables - Time of Flight
 Adafruit_VL6180X tof = Adafruit_VL6180X();
@@ -163,8 +163,11 @@ unsigned long timeCheckpoint;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
-const int STOP_TIME_AFTER_GATE = 1000;
-const int LIFT_BASKET_TIME = 3000;
+const int STOP_TIME_AT_GATE = 1000;
+const int GATE_CLEAR_TIME = 1000;
+
+// Runtime Parameters - Pet1
+const int LIFT_BASKET_TIME = 3200;
 
 // --- Function Headers --- //
 void initializeState();
@@ -188,16 +191,14 @@ void setup() {
   currentSwitchState = SwitchState::Off;
   currentPetState = PetState::PrePet;
 
-  currentStepState_PrePet = StepState_PrePet::ClearDoorway;
+  currentStepState_PrePet = StepState_PrePet::FindGate;
+  currentStepState_Pet1 = StepState_Pet1::FindTarget;
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(2.1, 0.5, 0.0, 0.0);
-
-  Serial.begin(115200);
 }
   
 void loop() {
-  timeCheckpoint = micros();
   switch(currentSwitchState) {
 
     // --- Begin Run --- //
@@ -208,46 +209,46 @@ void loop() {
       case PetState::PrePet:
       switch(currentStepState_PrePet) {
 
-        // --- Begin ClearDoorway --- //
-        case StepState_PrePet::ClearDoorway:
+        // --- Begin FindGate --- //
+        case StepState_PrePet::FindGate:
         runPID_withBackup(900);
         if (timeOfFlightReading < 40) {
-          Serial.printf("Changing to Stop state | %d\n", millis());
           currentStepState_PrePet = StepState_PrePet::Stop;
+          drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
-        // --- End ClearDoorway --- // 
+        // --- End FindGate --- // 
 
         // --- Begin Stop --- //
         case StepState_PrePet::Stop:
-        runPID_withBackup(900);
-        if (millis() - timeCheckpoint > STOP_TIME_AFTER_GATE) {
-          Serial.printf("Changing to LiftBasket state | %d | %d\n", timeCheckpoint, millis());
-          drivetrainSetPower(0);
-          currentStepState_PrePet = StepState_PrePet::LiftBasket;
+        if (millis() - timeCheckpoint > STOP_TIME_AT_GATE) {
+          currentStepState_PrePet = StepState_PrePet::ClearDoorway;
+          setPIDValues(1.2, 0.0, 0.0, 0.0);
           timeCheckpoint = millis();
         }
         break;
         // --- End Stop --- //
 
-        // --- Begin LifBasket --- //
-        case StepState_PrePet::LiftBasket:
-        verticalMotorSetPower(2000);
-        if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
-          Serial.printf("Changing to TurnArm state | %d | %d\n", timeCheckpoint, millis());
-          verticalMotorSetPower(0);
+        // --- Begin ClearDoorway --- //
+        case StepState_PrePet::ClearDoorway:
+        runPID_withBackup(700);
+        if (millis() - timeCheckpoint > GATE_CLEAR_TIME) {
           currentStepState_PrePet = StepState_PrePet::TurnArm;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
         }
         break;
-        // --- End LiftBasket --- //
+        // --- End ClearDoorway --- //
 
         // --- Begin TurnArm --- //
         case StepState_PrePet::TurnArm:
-        setServoTarget(&baseServo, 170);
-        updateServos();
+        setServoTarget(&baseServo, 30.0);
+        updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentPetState = PetState::Pet1;
+          setPIDValues(1.2, 0.0, 0.0, 0.0);
+          timeCheckpoint = millis();
         }
         break;
         // --- End TurnArm --- //
@@ -258,7 +259,75 @@ void loop() {
 
       // --- Begin Pet1 --- //
       case PetState::Pet1:
-      delay(100000);
+      switch(currentStepState_Pet1) {
+
+        // --- Begin FindTarget --- //
+        case StepState_Pet1::FindTarget:
+        runPID_withBackup(700);
+        if (timeOfFlightReading < 120) {
+          currentStepState_Pet1 = StepState_Pet1::LiftBasket;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End FindTarget --- //
+
+        // --- Begin LiftBasket --- //
+        case StepState_Pet1::LiftBasket:
+        verticalMotorSetPower(2000);
+        if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
+          currentStepState_Pet1 = StepState_Pet1::ArmSearchPreset;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End LiftBasket --- //
+
+        // --- Begin ArmSearchPreset --- //
+        case StepState_Pet1::ArmSearchPreset:
+        setServoTarget(&baseServo, 20);
+        updateServo(&baseServo);
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet1 = StepState_Pet1::PetSearch;
+          maxMagnetometerReading = 0.0;
+          maxMagnetometerBaseAngle = baseServo.currentAngle;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End ArmSearchPreset --- //
+
+        // --- Begin PetSearch --- //
+        case StepState_Pet1::PetSearch:
+        setServoTarget(&baseServo, 40);
+        updateServo(&baseServo);
+        readMagnetometer();
+        if (magnetometerMagnitude > maxMagnetometerReading) {
+          maxMagnetometerReading = magnetometerMagnitude;
+          maxMagnetometerBaseAngle = baseServo.currentAngle;
+        } 
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet1 = StepState_Pet1::PetFound;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End PetSearch --- //
+
+        // --- Begin PetFound --- //
+        case StepState_Pet1::PetFound:
+        setServoTarget(&baseServo, maxMagnetometerBaseAngle);
+        updateServo(&baseServo);
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet1 = StepState_Pet1::PetGrab;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End PetFound --- //
+
+        // --- Begin PetGrab --- //
+        case StepState_Pet1::PetGrab:
+        break;
+        // --- End PetGrab --- //
+
+      }
       break;
       // --- End Pet1 --- //
 
