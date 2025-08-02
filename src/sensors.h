@@ -93,8 +93,6 @@ void magnetometerSetup() {
 
   // Variables Initialization
   magnetometerMagnitude = 0.0;
-  magnetometerMagnitudeSum = 0.0;
-  magnetometerAverageCount = 0;
 }
 
 void timeOfFlightSetup() {
