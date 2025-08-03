@@ -136,6 +136,7 @@ TaskState currentTaskState;
 
 StepState_PrePet currentStepState_PrePet;
 StepState_Pet1 currentStepState_Pet1;
+StepState_Ramp currentStepState_Ramp;
 
 // Variables - PID
 double k_p;
@@ -162,11 +163,15 @@ int loopCounter;
 unsigned long timeCheckpoint;
 
 // --- Runtime Parameters --- //
+// Runtime Parameters - General
+const double CLAW_CLOSED_ANGLE = 30.0;
+
 // Runtime Parameters - PrePet
 const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
 const int LIFT_BASKET_TIME = 3200;
+const int PET1_GRAB_TIME = 2000;
 
 // --- Function Headers --- //
 void initializeState();
@@ -192,6 +197,7 @@ void setup() {
 
   currentStepState_PrePet = StepState_PrePet::FindGate;
   currentStepState_Pet1 = StepState_Pet1::FindTarget;
+  currentStepState_Ramp = StepState_Ramp::FindRamp;
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(2.1, 0.5, 0.0, 0.0);
@@ -291,9 +297,7 @@ void loop() {
         case StepState_Pet1::PetSearch:
         setServoTarget(&baseServo, 30);
         updateServo(&baseServo);
-        xSemaphoreTake(i2cMutex, portMAX_DELAY);
         readMagnetometer();
-        xSemaphoreGive(i2cMutex);
         if (magnetometerMagnitude > maxMagnetometerReading) {
           maxMagnetometerReading = magnetometerMagnitude;
           maxMagnetometerBaseAngle = baseServo.currentAngle;
@@ -319,13 +323,50 @@ void loop() {
 
         // --- Begin PetGrab --- // 
         case StepState_Pet1::PetGrab:
-        delay(100000);
+        if (millis() - timeCheckpoint < PET1_GRAB_TIME / 65.0) {
+          double height = BICEP_LENGTH * sin((PI / 180.0) * (shoulderServo.currentAngle + SHOULDER_OFFSET_ANGLE))
+          - FOREARM_LENGTH * sin((PI / 180.0) * (elbowServo.currentAngle + ELBOW_OFFSET_ANGLE - shoulderServo.currentAngle - SHOULDER_OFFSET_ANGLE));
+          servoGoTo(&shoulderServo, shoulderServo.currentAngle + 1);
+          servoGoTo(&elbowServo, calculateElbowAngle(shoulderServo.targetAngle, height));
+          servoGoTo(&wristServo, calculateWristAngle(shoulderServo.targetAngle, elbowServo.targetAngle, height));
+          timeCheckpoint = millis();
+        }
+        if (timeOfFlightReading < 40 || shoulderServo.targetAngle < 5) {
+          servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
+          currentStepState_Pet1 = StepState_Pet1::ReturnArm;
+          timeCheckpoint = millis();
+        }
         break;
         // --- End PetGrab --- //
+
+        // --- Begin ReturnArm --- //
+        case StepState_Pet1::ReturnArm:
+        setAllServoTargets(90, 60, 175, 140, CLAW_CLOSED_ANGLE);
+        updateServos();
+        if (allServosDone()) {
+          currentPetState = PetState::Ramp;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End ReturnArm --- //
 
       }
       break;
       // --- End Pet1 --- //
+
+      // --- Begin Ramp --- //
+      case PetState::Ramp:
+      switch(currentStepState_Ramp) {
+
+        // --- Begin FindRamp --- //
+        case StepState_Ramp::FindRamp:
+        delay(100000);
+        break;
+        // --- End Ramp --- //
+
+      }
+      break;
+      // --- End Ramp --- //
 
     }
     break;

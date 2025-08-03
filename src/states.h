@@ -14,7 +14,7 @@ extern bool resetSwitchState;
 enum SwitchState {Run, Initialize, Reset, Off};
 extern SwitchState currentSwitchState;
 
-enum PetState {PrePet, Pet1, Pet2, Pet3, Pet4, Pet5, Pet6, Pet7, PostPet};
+enum PetState {PrePet, Pet1, Ramp, Pet2, Pet3, Pet4, Pet5, Pet6, Pet7, PostPet};
 extern PetState currentPetState;
 
 enum TaskState {TapeFollow, TapeFind};
@@ -23,8 +23,11 @@ extern TaskState currentTaskState;
 enum StepState_PrePet {FindGate, ClearDoorway, TurnArm};
 extern StepState_PrePet currentStepState_PrePet;
 
-enum StepState_Pet1 {FindTarget, LiftBasket, ArmSearchPreset, PetSearch, PetFound, PetGrab};
+enum StepState_Pet1 {FindTarget, LiftBasket, ArmSearchPreset, PetSearch, PetFound, PetGrab, ReturnArm};
 extern StepState_Pet1 currentStepState_Pet1;
+
+enum StepState_Ramp {FindRamp};
+extern StepState_Ramp currentStepState_Ramp;
 
 // --- Function Headers --- //
 void stateSetup();
