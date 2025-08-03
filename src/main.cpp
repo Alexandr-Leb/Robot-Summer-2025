@@ -222,8 +222,6 @@ void setup() {
 }
   
 void loop() {
-  readReflectanceSensors();
-  Serial.printf("%d | %d | %d | %d\n", leftReflectance, rightReflectance, (int) leftOnTape, (int) rightOnTape);
   switch(currentSwitchState) {
  
     // --- Begin Run --- //
@@ -419,8 +417,8 @@ void loop() {
         case StepState_Ramp::AlignRamp:
         rightMotorSetPower(1500);
         readReflectanceSensors();
-        if ((leftOnTape || rightOnTape) && millis() - timeCheckpoint > RAMP_CORREECTION_TIME) {
-          currentStepState_Ramp = StepState_Ramp::DropPet;
+        if (leftReflectance > RAMP_TAPE_FOUND_THRESHOLD && millis() - timeCheckpoint > RAMP_CORREECTION_TIME) {
+          currentStepState_Ramp = StepState_Ramp::ClimbRamp;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
@@ -440,6 +438,7 @@ void loop() {
 
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
+        runPID_withBackup(1400);
         break;
         // --- End ClimbRamp --- //
 
