@@ -200,14 +200,6 @@ void setup() {
 }
   
 void loop() {
-  // Serial.print("Current switch state: ");
-  // Serial.println(currentSwitchState);
-  // Serial.print("Current pet state: ");
-  // Serial.println(currentPetState);
-  Serial.print("currentStepState_Pet1: ");
-  Serial.println(currentStepState_Pet1);
-  Serial.println("---");
-  // delay(50);
   switch(currentSwitchState) {
  
     // --- Begin Run --- //
@@ -272,7 +264,7 @@ void loop() {
 
         // --- Begin LiftBasket --- //
         case StepState_Pet1::LiftBasket:
-        //verticalMotorSetPower(2000);
+        verticalMotorSetPower(2000);
         if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
           currentStepState_Pet1 = StepState_Pet1::ArmSearchPreset;
           verticalMotorSetPower(0);
@@ -297,25 +289,20 @@ void loop() {
 
         // --- Begin PetSearch --- //
         case StepState_Pet1::PetSearch:
-        Serial.println("hit0");
         setServoTarget(&baseServo, 30);
         updateServo(&baseServo);
-        Serial.println("hit1");
         xSemaphoreTake(i2cMutex, portMAX_DELAY);
         readMagnetometer();
         xSemaphoreGive(i2cMutex);
-        Serial.println("hit2");
         if (magnetometerMagnitude > maxMagnetometerReading) {
           maxMagnetometerReading = magnetometerMagnitude;
           maxMagnetometerBaseAngle = baseServo.currentAngle;
         }
-        Serial.println("hit3");
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetFound;
           baseServo.speed = SERVO_STARTING_SPEED;
           timeCheckpoint = millis();
         }
-        Serial.println("hit4");
         break;
         // --- End PetSearch --- //
 

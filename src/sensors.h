@@ -126,12 +126,14 @@ void readForwardReflectanceSensors() {
 }
 
 void readMagnetometer() {
+  xSemaphoreTake(i2cMutex, portMAX_DELAY);
   sensors_event_t event;
   lis.getEvent(&event);
   float x = event.magnetic.x;
   float y = event.magnetic.y;
   float z = event.magnetic.z;
   magnetometerMagnitude = (double) sqrt(x * x + y * y + z * z);
+  xSemaphoreGive(i2cMutex);
 }
 
 // void readTimeOfFlight() {
