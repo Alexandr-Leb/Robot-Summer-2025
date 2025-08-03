@@ -173,6 +173,9 @@ const int GATE_CLEAR_TIME = 800;
 const int LIFT_BASKET_TIME = 3200;
 const int PET1_GRAB_TIME = 2000;
 
+// Runtime Parameters - Ramp
+const int RAMP_DETECTION_THRESHOLD = 300;
+
 // --- Function Headers --- //
 void initializeState();
 void resetState();
@@ -361,8 +364,33 @@ void loop() {
         // --- Begin FindRamp --- //
         case StepState_Ramp::FindRamp:
         delay(100000);
+        runPID_withBackup(700);
+        readForwardReflectanceSensors();
+        if (leftReflectance < RAMP_DETECTION_THRESHOLD) {
+          delay(1000);
+        }
         break;
-        // --- End Ramp --- //
+        // --- End FindRamp --- //
+
+        // --- Begin AlignRamp --- //
+        case StepState_Ramp::AlignRamp:
+        break;
+        // --- End AlignRamp --- //
+
+        // --- Begin DropPet --- //
+        case StepState_Ramp::DropPet:
+        break;
+        // --- End DropPet --- //
+
+        // --- Begin ResetArm --- //
+        case StepState_Ramp::ResetArm:
+        break;
+        // --- End ResetArm --- //
+
+        // --- Begin ClimbRamp --- //
+        case StepState_Ramp::ClimbRamp:
+        break;
+        // --- End ClimbRamp --- //
 
       }
       break;
