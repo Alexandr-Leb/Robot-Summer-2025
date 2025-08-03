@@ -187,6 +187,7 @@ const int PET1_GRAB_TIME = 5000;
 
 // Runtime Parameters - Ramp
 const int RAMP_DETECTION_THRESHOLD = 300;
+const int RAMP_CORREECTION_TIME = 2000;
 
 // --- Function Headers --- //
 void initializeState();
@@ -406,9 +407,6 @@ void loop() {
           if (forwardLeftReflectanceSum / forwardReflectanceCount < RAMP_DETECTION_THRESHOLD) {
             currentStepState_Ramp = StepState_Ramp::AlignRamp;
             drivetrainSetPower(0);
-            // forwardLeftReflectanceSum = 0; // Unnecessary
-            // forwardRightReflectanceSum = 0;
-            // forwardReflectanceCount = 0; // Unnecessary
             timeCheckpoint = millis();
           }
           forwardLeftReflectanceSum = 0;
@@ -420,42 +418,14 @@ void loop() {
         // --- Begin AlignRamp --- //
         case StepState_Ramp::AlignRamp:
         rightMotorSetPower(1500);
-        // readForwardReflectanceSensors();
-        // forwardLeftReflectanceSum += forwardLeftReflectance;
-        // forwardRightReflectanceSum += forwardRightReflectance;
-        // forwardReflectanceCount++;
-        // if (forwardReflectanceCount == NUM_REFLECTANCE_AVERAGE_COUNT) {
-        //   if (forwardRightReflectanceSum / forwardReflectanceCount < forwardLeftReflectanceThreshold
-        //     && forwardRightReflectanceSum / forwardReflectanceCount > 2100) {
-        //     currentStepState_Ramp = StepState_Ramp::Reverse;
-        //     drivetrainSetPower(0);
-        //     timeCheckpoint = millis();
-        //   }
-        //   forwardLeftReflectanceSum = 0;
-        //   forwardRightReflectanceSum = 0;
-        //   forwardReflectanceCount = 0;
-        // }
         readReflectanceSensors();
-        if ((leftOnTape || rightOnTape) && millis() - timeCheckpoint > 2000) {
-          currentStepState_Ramp = StepState_Ramp::Reverse;
+        if ((leftOnTape || rightOnTape) && millis() - timeCheckpoint > RAMP_CORREECTION_TIME) {
+          currentStepState_Ramp = StepState_Ramp::DropPet;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
         // --- End AlignRamp --- //
-
-        // --- Begin Reverse --- //
-        case StepState_Ramp::Reverse:
-        delay(1000000);
-        drivetrainSetPower(-700);
-        readReflectanceSensors();
-        if (leftOnTape || rightOnTape) {
-          currentStepState_Ramp = StepState_Ramp::Reverse;
-          drivetrainSetPower(0);
-          timeCheckpoint = millis();
-        } 
-        break;
-        // --- End Reverse --- //
 
         // --- Begin DropPet --- //
         case StepState_Ramp::DropPet:
