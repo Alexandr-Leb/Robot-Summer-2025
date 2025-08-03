@@ -70,8 +70,6 @@ double magnetometerMagnitude;
 // Variables - Magnetometer Maximum
 double maxMagnetometerReading;
 double maxMagnetometerBaseAngle;
-double magnetometerMagnitudeSum;
-int magnetometerAverageCount;
 
 // Variables - Time of Flight
 Adafruit_VL6180X tof = Adafruit_VL6180X();
@@ -162,7 +160,6 @@ bool prevRightOnTape;
 // Variables - Runtime
 int loopCounter;
 unsigned long timeCheckpoint;
-int sweepAngleIncrement;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
@@ -170,7 +167,6 @@ const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
 const int LIFT_BASKET_TIME = 3200;
-const int PET1_SEARCH_TIME = 2000;
 
 // --- Function Headers --- //
 void initializeState();
@@ -204,6 +200,14 @@ void setup() {
 }
   
 void loop() {
+  // Serial.print("Current switch state: ");
+  // Serial.println(currentSwitchState);
+  // Serial.print("Current pet state: ");
+  // Serial.println(currentPetState);
+  Serial.print("currentStepState_Pet1: ");
+  Serial.println(currentStepState_Pet1);
+  Serial.println("---");
+  // delay(50);
   switch(currentSwitchState) {
  
     // --- Begin Run --- //
@@ -268,7 +272,7 @@ void loop() {
 
         // --- Begin LiftBasket --- //
         case StepState_Pet1::LiftBasket:
-        verticalMotorSetPower(2000);
+        //verticalMotorSetPower(2000);
         if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
           currentStepState_Pet1 = StepState_Pet1::ArmSearchPreset;
           verticalMotorSetPower(0);
@@ -279,15 +283,13 @@ void loop() {
 
         // --- Begin ArmSearchPreset --- //
         case StepState_Pet1::ArmSearchPreset:
-        setServoTarget(&baseServo, 90);
+        setServoTarget(&baseServo, 120);
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetSearch;
           maxMagnetometerReading = 0.0;
           maxMagnetometerBaseAngle = baseServo.currentAngle;
-          magnetometerMagnitudeSum = 0.0;
-          magnetometerAverageCount = 0;
-          sweepAngleIncrement = 0;
+          baseServo.speed = 0.02;
           timeCheckpoint = millis();
         }
         break;
@@ -295,25 +297,25 @@ void loop() {
 
         // --- Begin PetSearch --- //
         case StepState_Pet1::PetSearch:
+        Serial.println("hit0");
+        setServoTarget(&baseServo, 30);
+        updateServo(&baseServo);
+        Serial.println("hit1");
+        xSemaphoreTake(i2cMutex, portMAX_DELAY);
         readMagnetometer();
-        magnetometerMagnitudeSum += magnetometerMagnitude;
-        magnetometerAverageCount++;
-        if (millis() - timeCheckpoint > PET1_SEARCH_TIME / 60) {
-          double nextMagnetometerAverage = magnetometerMagnitudeSum / magnetometerAverageCount;
-          if (nextMagnetometerAverage > maxMagnetometerReading) {
-            maxMagnetometerReading = nextMagnetometerAverage;
-            maxMagnetometerBaseAngle = 90 - sweepAngleIncrement;
-          }
-          sweepAngleIncrement++;
-          servoGoTo(&baseServo, 90 - sweepAngleIncrement);
-          magnetometerMagnitudeSum = 0.0;
-          magnetometerAverageCount = 0;
-          if (sweepAngleIncrement == 60) {
-            currentStepState_Pet1 = StepState_Pet1::PetFound; 
-            timeCheckpoint = millis(); // Not needed
-          }
+        xSemaphoreGive(i2cMutex);
+        Serial.println("hit2");
+        if (magnetometerMagnitude > maxMagnetometerReading) {
+          maxMagnetometerReading = magnetometerMagnitude;
+          maxMagnetometerBaseAngle = baseServo.currentAngle;
+        }
+        Serial.println("hit3");
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet1 = StepState_Pet1::PetFound;
+          baseServo.speed = SERVO_STARTING_SPEED;
           timeCheckpoint = millis();
         }
+        Serial.println("hit4");
         break;
         // --- End PetSearch --- //
 
@@ -396,6 +398,7 @@ void offState() {
     servoGoTo(&clawServo, SERVO_STARTING_ANGLES[4]);
   }
   updateSwitchState();
+  delay(250);
 }
 
 void updateSwitchState() {
