@@ -23,7 +23,7 @@ const double BICEP_LENGTH = 132.446; // in mm
 const double FOREARM_LENGTH = 105.641; // in mm
 const double SHOULDER_OFFSET_ANGLE = -7.7; // in degrees
 const double ELBOW_OFFSET_ANGLE = -16.8; // in degrees
-const double WRIST_OFFSET_ANGLE = -53.6; // in degrees
+const double WRIST_OFFSET_ANGLE = -37.6; // in degrees // Positive brings down
 
 // --- Variables --- //
 struct Servo {
