@@ -19,6 +19,11 @@ const double SERVO_ERROR = 0.01; // in degrees
 const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {94, 50, 110, 180, 120}; // in degrees
 const double SERVO_STARTING_SPEED = 0.05; // in degrees/ms
 const double SERVO_MAX_ANGLE_CHANGE = 0.8; // in degrees
+const double BICEP_LENGTH = 132.446; // in mm
+const double FOREARM_LENGTH = 105.641; // in mm
+const double SHOULDER_OFFSET_ANGLE = -7.7; // in degrees
+const double ELBOW_OFFSET_ANGLE = -16.8; // in degrees
+const double WRIST_OFFSET_ANGLE = -53.6; // in degrees
 
 // --- Variables --- //
 struct Servo {
@@ -47,6 +52,8 @@ void updateServo(Servo *servo);
 bool servoDone(Servo *servo);
 double angleToPWM(double angle);
 void servoGoTo(Servo *servo, double angle);
+double calculateElbowAngle(double shoulderAngle, double height);
+double calculateWristAngle(double shoulderAngle, double elbowAngle, double height);
 
 // --- Functions --- //
 void armSetup() {
@@ -122,4 +129,13 @@ void servoGoTo(Servo *servo, double angle) {
   servo->targetAngle = angle;
   servo->currentAngle = angle;
   servo->timeUpdated = millis();
+}
+
+double calculateElbowAngle(double shoulderAngle, double height) {
+  return shoulderAngle + SHOULDER_OFFSET_ANGLE - ELBOW_OFFSET_ANGLE
+  + (180.0 / PI) * asin((BICEP_LENGTH * sin((PI / 180.0) * (shoulderAngle + SHOULDER_OFFSET_ANGLE)) - height) / FOREARM_LENGTH);
+}
+
+double calculateWristAngle(double shoulderAngle, double elbowAngle, double height) {
+  return -shoulderAngle - SHOULDER_OFFSET_ANGLE + elbowAngle + ELBOW_OFFSET_ANGLE - WRIST_OFFSET_ANGLE;
 }
