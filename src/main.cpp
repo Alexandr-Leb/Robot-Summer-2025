@@ -70,6 +70,8 @@ double magnetometerMagnitude;
 // Variables - Magnetometer Maximum
 double maxMagnetometerReading;
 double maxMagnetometerBaseAngle;
+double magnetometerMagnitudeSum;
+int magnetometerAverageCount;
 
 // Variables - Time of Flight
 Adafruit_VL6180X tof = Adafruit_VL6180X();
@@ -160,6 +162,7 @@ bool prevRightOnTape;
 // Variables - Runtime
 int loopCounter;
 unsigned long timeCheckpoint;
+int sweepAngleIncrement;
 
 // --- Runtime Parameters --- //
 // Runtime Parameters - PrePet
@@ -167,6 +170,7 @@ const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
 const int LIFT_BASKET_TIME = 3200;
+const int PET1_SEARCH_TIME = 2000;
 
 // --- Function Headers --- //
 void initializeState();
@@ -281,7 +285,9 @@ void loop() {
           currentStepState_Pet1 = StepState_Pet1::PetSearch;
           maxMagnetometerReading = 0.0;
           maxMagnetometerBaseAngle = baseServo.currentAngle;
-          baseServo.speed = 0.02;
+          magnetometerMagnitudeSum = 0.0;
+          magnetometerAverageCount = 0;
+          sweepAngleIncrement = 0;
           timeCheckpoint = millis();
         }
         break;
@@ -289,16 +295,23 @@ void loop() {
 
         // --- Begin PetSearch --- //
         case StepState_Pet1::PetSearch:
-        setServoTarget(&baseServo, 30);
-        updateServo(&baseServo);
         readMagnetometer();
-        if (magnetometerMagnitude > maxMagnetometerReading) {
-          maxMagnetometerReading = magnetometerMagnitude;
-          maxMagnetometerBaseAngle = baseServo.currentAngle;
-        } 
-        if (servoDone(&baseServo)) {
-          currentStepState_Pet1 = StepState_Pet1::PetFound;
-          baseServo.speed = SERVO_STARTING_SPEED;
+        magnetometerMagnitudeSum += magnetometerMagnitude;
+        magnetometerAverageCount++;
+        if (millis() - timeCheckpoint > PET1_SEARCH_TIME / 60) {
+          double nextMagnetometerAverage = magnetometerMagnitudeSum / magnetometerAverageCount;
+          if (nextMagnetometerAverage > maxMagnetometerReading) {
+            maxMagnetometerReading = nextMagnetometerAverage;
+            maxMagnetometerBaseAngle = 90 - sweepAngleIncrement;
+          }
+          sweepAngleIncrement++;
+          servoGoTo(&baseServo, 90 - sweepAngleIncrement);
+          magnetometerMagnitudeSum = 0.0;
+          magnetometerAverageCount = 0;
+          if (sweepAngleIncrement == 60) {
+            currentStepState_Pet1 = StepState_Pet1::PetFound; 
+            timeCheckpoint = millis(); // Not needed
+          }
           timeCheckpoint = millis();
         }
         break;
