@@ -32,6 +32,18 @@ extern StepState_Ramp currentStepState_Ramp;
 enum StepState_Pet2 {FindTarget2, ArmSearchPreset2, PetSearch2, PetFound2, PetGrab2, ReturnArm2, DropPet2};
 extern StepState_Pet2 currentStepState_Pet2;
 
+enum StepState_Pet3 {FindTarget3, ArmSearchPreset3, PetSearch3, PetFound3, PetGrab3, DropPet3};
+extern StepState_Pet3 currentStepState_Pet3;
+
+enum StepState_Pet4 {FindTarget4, ArmSearchPreset4, PetSearch4, PetFound4, PetGrab4, DropPet4};
+extern StepState_Pet4 currentStepState_Pet4;
+
+enum StepState_Pet5 {FindTarget5, ArmSearchPreset5, PetSearch5, PetFound5, PetGrab5, DropPet5};
+extern StepState_Pet5 currentStepState_Pet5;
+
+enum StepState_Pet6 {FindTarget6, ArmSearchPreset6, PetSearch6, PetFound6, PetGrab6, DropPet6};
+extern StepState_Pet6 currentStepState_Pet6;
+
 // --- Function Headers --- //
 void stateSetup();
 void switchSetup();
