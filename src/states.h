@@ -23,11 +23,14 @@ extern TaskState currentTaskState;
 enum StepState_PrePet {ClearBucket, FindGate, ClearDoorway, TurnArm};
 extern StepState_PrePet currentStepState_PrePet;
 
-enum StepState_Pet1 {FindTarget, LiftBasket, ArmSearchPreset, PetSearch, PetFound, PetGrab, ReturnArm};
+enum StepState_Pet1 {FindTarget1, LiftBasket, ArmSearchPreset1, PetSearch1, PetFound1, PetGrab1, ReturnArm1};
 extern StepState_Pet1 currentStepState_Pet1;
 
-enum StepState_Ramp {FindRamp, AlignRamp, ClimbRamp, InchForwards, FarazLaptop};
+enum StepState_Ramp {FindRamp, AlignRamp, ClimbRamp, InchForwards, DropPet1};
 extern StepState_Ramp currentStepState_Ramp;
+
+enum StepState_Pet2 {FindTarget2, ArmSearchPreset2, PetSearch2, PetFound2, PetGrab2, ReturnArm2, DropPet2};
+extern StepState_Pet2 currentStepState_Pet2;
 
 // --- Function Headers --- //
 void stateSetup();
