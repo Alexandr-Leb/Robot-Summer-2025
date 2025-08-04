@@ -227,7 +227,7 @@ void loop() {
   switch(currentSwitchState) {
  
     // --- Begin Run --- //
-    case SwitchState::Run:
+    case SwitchState::Run:  
     switch(currentPetState) {
 
       // --- Begin PrePet --- //
@@ -408,7 +408,7 @@ void loop() {
           if (forwardLeftReflectanceSum / forwardReflectanceCount < RAMP_DETECTION_THRESHOLD) {
             currentStepState_Ramp = StepState_Ramp::AlignRamp;
             drivetrainSetPower(0);
-            setPIDValues(1.2, 0.0, 4.0, 0);
+            setPIDValues(1.2, 0.0, 2.0, 0);
             timeCheckpoint = millis();
           }
           forwardLeftReflectanceSum = 0;
@@ -424,7 +424,7 @@ void loop() {
         if (leftReflectance > RAMP_TAPE_FOUND_THRESHOLD && millis() - timeCheckpoint > RAMP_CORREECTION_TIMEOUT) {
           currentStepState_Ramp = StepState_Ramp::ClimbRamp;
           drivetrainSetPower(0);
-          baseServo.speed = 0.2;
+          // baseServo.speed = 0.2;
           timeCheckpoint = millis();
         }
         break;
@@ -433,15 +433,18 @@ void loop() {
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
         runPID_withHysteresis(1400);
-        if (millis() - timeCheckpoint < ARM_DROP_TURN_TIMER) {
-          setAllServoTargets(170, 60, 30, 20, clawServo.currentAngle);
-        } else if (millis() - timeCheckpoint > ARM_DROP_TURN_TIMER && millis() - timeCheckpoint < ARM_DROP_TURN_TIMER + ARM_DROP_RELEASE_TIMER) {
-          servoGoTo(&clawServo, 120);
-        } else {
-          setAllServoTargets(90, 90, 177, 142, 120);
+        // if (millis() - timeCheckpoint < ARM_DROP_TURN_TIMER) {
+        //   setAllServoTargets(170, 60, 30, 20, clawServo.currentAngle);
+        // } else if (millis() - timeCheckpoint > ARM_DROP_TURN_TIMER && millis() - timeCheckpoint < ARM_DROP_TURN_TIMER + ARM_DROP_RELEASE_TIMER) {
+        //   servoGoTo(&clawServo, 120);
+        // } else {
+        //   setAllServoTargets(90, 90, 177, 142, 120);
+        // }
+        // updateServos();
+        readForwardReflectanceSensors();
+        if (forwardLeftReflectance > 1400 && forwardRightReflectance > 2800) {
+          drivetrainSetPower(0);
         }
-        updateServos();
-        // UPDATE SERVO SPEED
         break;
         // --- End ClimbRamp --- //
 
