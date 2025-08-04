@@ -18,7 +18,7 @@
 
 // --- Constants --- //
 const int REFLECTANCE_COMPARISON_THRESHOLD = 150;
-const int NUM_REFLECTANCE_AVERAGE_COUNT = 5;
+const int NUM_REFLECTANCE_AVERAGE_COUNT = 10;
 const int FORWARD_REFLECTANCE_COMPARISON_THRESHOLD = 500;
 
 // --- Variables --- //
@@ -179,17 +179,17 @@ const double CLAW_CLOSED_ANGLE = 0.0;
 const int CLAW_CLOSE_TIME = 1500;
 
 // Runtime Parameters - PrePet
+const int BUCKET_CLEAR_TIME = 2000;
 const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
-const int LIFT_BASKET_TIME = 3200;
+const int LIFT_BASKET_TIME = 4000;
 const int PET1_GRAB_TIME = 5000;
 
 // Runtime Parameters - Ramp
 const int RAMP_DETECTION_THRESHOLD = 300;
 const int RAMP_CORREECTION_TIMEOUT = 500;
-const int ARM_DROP_TURN_TIMER = 1200;
-const int ARM_DROP_RELEASE_TIMER = 800;
+const int INCH_FORWARDS_TIME = 500; 
 
 // --- Function Headers --- //
 void initializeState();
@@ -213,14 +213,15 @@ void setup() {
   currentSwitchState = SwitchState::Off;
   currentPetState = PetState::PrePet;
 
-  currentStepState_PrePet = StepState_PrePet::FindGate;
+  currentStepState_PrePet = StepState_PrePet::ClearBucket;
   currentStepState_Pet1 = StepState_Pet1::FindTarget;
   currentStepState_Ramp = StepState_Ramp::FindRamp;
 
   currentTaskState = TaskState::TapeFollow;
-  setPIDValues(2.1, 0.5, 5.0, 0.0);
+  setPIDValues(2.1, 0.5, 0.0, 0.0);
 
   Serial.begin(115200);
+  delay(1000);
 }
   
 void loop() {
@@ -234,9 +235,20 @@ void loop() {
       case PetState::PrePet:
       switch(currentStepState_PrePet) {
 
+        // --- Begin ClearBucket --- //
+        case StepState_PrePet::ClearBucket:
+        runPID_withBackup(900);
+        if (millis() - timeCheckpoint > BUCKET_CLEAR_TIME) {
+          currentStepState_PrePet = StepState_PrePet::FindGate;
+          setPIDValues(1.2, 0.0, 0.0, 0.0);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End clearBucket --- //
+
         // --- Begin FindGate --- //
         case StepState_PrePet::FindGate:
-        runPID_withBackup(900);
+        runPID_withBackup(700);
         if (timeOfFlightReading < 60) {
           currentStepState_PrePet = StepState_PrePet::ClearDoorway;
           setPIDValues(1.2, 0.0, 5.0, 0.0);
@@ -257,14 +269,14 @@ void loop() {
         // --- End ClearDoorway --- //
 
         // --- Begin TurnArm --- //
+        case StepState_PrePet::TurnArm:
         readReflectanceSensors();
         computePID();
-        case StepState_PrePet::TurnArm:
-        setAllServoTargets(75, 50, 177, 137, 120);
+        setAllServoTargets(65, 50, 177, 137, 120);
         while (!allServosDone()) {
           updateServos();
         }
-        setAllServoTargets(75, 70, 177, 137 , 120);
+        setAllServoTargets(65, 70, 177, 137 , 120);
         while (!allServosDone()) {
           updateServos();
         }
@@ -292,7 +304,7 @@ void loop() {
           setPIDValues(1.2, 0.0, 0.0, 0.0);
           runPID_withBackup(700);
         }
-        if (timeOfFlightReading < 120) {
+        if (timeOfFlightReading < 120) { 
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
@@ -408,7 +420,6 @@ void loop() {
           if (forwardLeftReflectanceSum / forwardReflectanceCount < RAMP_DETECTION_THRESHOLD) {
             currentStepState_Ramp = StepState_Ramp::AlignRamp;
             drivetrainSetPower(0);
-            setPIDValues(1.2, 0.0, 2.0, 0);
             timeCheckpoint = millis();
           }
           forwardLeftReflectanceSum = 0;
@@ -424,7 +435,10 @@ void loop() {
         if (leftReflectance > RAMP_TAPE_FOUND_THRESHOLD && millis() - timeCheckpoint > RAMP_CORREECTION_TIMEOUT) {
           currentStepState_Ramp = StepState_Ramp::ClimbRamp;
           drivetrainSetPower(0);
-          // baseServo.speed = 0.2;
+          setPIDValues(1.8, 0.0, 4.0, 0);
+          forwardLeftReflectanceSum = 0;
+          forwardRightReflectanceSum = 0;
+          forwardReflectanceCount = 0;
           timeCheckpoint = millis();
         }
         break;
@@ -433,24 +447,82 @@ void loop() {
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
         runPID_withHysteresis(1400);
-        // if (millis() - timeCheckpoint < ARM_DROP_TURN_TIMER) {
-        //   setAllServoTargets(170, 60, 30, 20, clawServo.currentAngle);
-        // } else if (millis() - timeCheckpoint > ARM_DROP_TURN_TIMER && millis() - timeCheckpoint < ARM_DROP_TURN_TIMER + ARM_DROP_RELEASE_TIMER) {
-        //   servoGoTo(&clawServo, 120);
-        // } else {
-        //   setAllServoTargets(90, 90, 177, 142, 120);
-        // }
-        // updateServos();
         readForwardReflectanceSensors();
-        if (forwardLeftReflectance > 1400 && forwardRightReflectance > 2800) {
-          drivetrainSetPower(0);
+        forwardLeftReflectanceSum += forwardLeftReflectance;
+        forwardRightReflectanceSum += forwardRightReflectance;
+        forwardReflectanceCount++;
+        if (forwardReflectanceCount == NUM_REFLECTANCE_AVERAGE_COUNT) {
+          if ((double) forwardLeftReflectanceSum / forwardReflectanceCount > 2000.0 && (double) forwardRightReflectanceSum / forwardReflectanceCount > 3000) {
+            currentStepState_Ramp = StepState_Ramp::InchForwards;
+            timeCheckpoint = millis();
+          }
+          forwardLeftReflectanceSum = 0;
+          forwardRightReflectanceSum = 0;
+          forwardReflectanceCount = 0;
         }
         break;
         // --- End ClimbRamp --- //
 
+        // --- Begin InchForwards --- //
+        case StepState_Ramp::InchForwards:
+        runPID_withHysteresis(1400);
+        if (millis() - timeCheckpoint > INCH_FORWARDS_TIME) {
+          currentStepState_Ramp = StepState_Ramp::FarazLaptop;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        }
+        break; 
+        // --- End InchForwards --- //
+
+        // --- Begin FarazLaptop --- //
+        case StepState_Ramp::FarazLaptop:
+        // DROP IT LIKE ITS HOT
+        setServoTarget(&wristServo, 20);
+        while(!servoDone(&wristServo)) {
+          updateServo(&wristServo);
+        }
+        setServoTarget(&elbowServo, 10);
+        while(!servoDone(&elbowServo)) {
+          updateServo(&elbowServo);
+        }
+        setServoTarget(&baseServo, 175);
+        while(!servoDone(&baseServo)) {
+          updateServo(&baseServo);
+        }
+        setServoTarget(&elbowServo, 60);
+        setServoTarget(&shoulderServo, 100);
+        while(!servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
+          updateServo(&elbowServo);
+          updateServo(&shoulderServo);
+        }
+        servoGoTo(&clawServo, 120);
+        delay(CLAW_CLOSE_TIME);
+        setServoTarget(&wristServo, 142);
+        while(!servoDone(&wristServo)) {
+          updateServo(&wristServo);
+        }
+        setServoTarget(&baseServo, 90);
+        while(!servoDone(&baseServo)) {
+          updateServo(&baseServo);
+        }
+        setServoTarget(&elbowServo, 177);
+        while(!servoDone(&elbowServo)) {
+          updateServo(&elbowServo);
+        }
+        currentPetState = PetState::Pet2;
+        timeCheckpoint = millis();
+        break;
+        // --- End FarazLaptop --- //
+
       }
       break;
       // --- End Ramp --- //
+
+      // --- Begin Pet2 --- //
+      case PetState::Pet2:
+      delay(100000);
+      break;
+      // --- End Pet2 --- //
 
     }
     break;
