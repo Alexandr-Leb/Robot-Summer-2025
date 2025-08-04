@@ -189,7 +189,7 @@ const int PET1_GRAB_TIME = 5000;
 // Runtime Parameters - Ramp
 const int RAMP_DETECTION_THRESHOLD = 300;
 const int RAMP_CORREECTION_TIMEOUT = 500;
-const int INCH_FORWARDS_TIME = 500; 
+const int INCH_FORWARDS_TIME = 200; 
 
 // --- Function Headers --- //
 void initializeState();
@@ -221,7 +221,6 @@ void setup() {
   setPIDValues(2.1, 0.5, 0.0, 0.0);
 
   Serial.begin(115200);
-  delay(1000);
 }
   
 void loop() {
@@ -272,11 +271,11 @@ void loop() {
         case StepState_PrePet::TurnArm:
         readReflectanceSensors();
         computePID();
-        setAllServoTargets(65, 50, 177, 137, 120);
+        setAllServoTargets(65, 50, 177, 142, 120);
         while (!allServosDone()) {
           updateServos();
         }
-        setAllServoTargets(65, 70, 177, 137 , 120);
+        setAllServoTargets(65, 70, 177, 142, 120);
         while (!allServosDone()) {
           updateServos();
         }
@@ -388,7 +387,7 @@ void loop() {
 
         // --- Begin ReturnArm --- //
         case StepState_Pet1::ReturnArm:
-        setAllServoTargets(90, 90, 177, 142, CLAW_CLOSED_ANGLE);
+        setAllServoTargets(90, 90, 160, 142, CLAW_CLOSED_ANGLE);
         while (!allServosDone()) {
           updateServos();
         }
@@ -477,37 +476,43 @@ void loop() {
         // --- Begin FarazLaptop --- //
         case StepState_Ramp::FarazLaptop:
         // DROP IT LIKE ITS HOT
-        setServoTarget(&wristServo, 20);
-        while(!servoDone(&wristServo)) {
+        setServoTarget(&shoulderServo, 75);
+        setServoTarget(&elbowServo, 10);
+        setServoTarget(&wristServo, 40);
+        while(!servoDone(&wristServo) || !servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
+          updateServo(&shoulderServo);
+          updateServo(&elbowServo);
           updateServo(&wristServo);
         }
-        setServoTarget(&elbowServo, 10);
-        while(!servoDone(&elbowServo)) {
-          updateServo(&elbowServo);
-        }
-        setServoTarget(&baseServo, 175);
+        setServoTarget(&baseServo, 180);
         while(!servoDone(&baseServo)) {
           updateServo(&baseServo);
         }
-        setServoTarget(&elbowServo, 60);
-        setServoTarget(&shoulderServo, 100);
-        while(!servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
-          updateServo(&elbowServo);
+        setServoTarget(&shoulderServo, 60);
+        setServoTarget(&elbowServo, 20);
+        setServoTarget(&wristServo, 10);
+        while(!servoDone(&wristServo) || !servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
           updateServo(&shoulderServo);
+          updateServo(&elbowServo);
+          updateServo(&wristServo);
         }
         servoGoTo(&clawServo, 120);
         delay(CLAW_CLOSE_TIME);
-        setServoTarget(&wristServo, 142);
-        while(!servoDone(&wristServo)) {
+        setServoTarget(&shoulderServo, 75);
+        setServoTarget(&elbowServo, 10);
+        setServoTarget(&wristServo, 40);
+        while(!servoDone(&wristServo) || !servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
+          updateServo(&shoulderServo);
+          updateServo(&elbowServo);
           updateServo(&wristServo);
         }
         setServoTarget(&baseServo, 90);
         while(!servoDone(&baseServo)) {
           updateServo(&baseServo);
         }
-        setServoTarget(&elbowServo, 177);
-        while(!servoDone(&elbowServo)) {
-          updateServo(&elbowServo);
+        setAllServoTargets(90, 70, 160, 142, 120);
+        while(!allServosDone()) {
+          updateServos();
         }
         currentPetState = PetState::Pet2;
         timeCheckpoint = millis();
