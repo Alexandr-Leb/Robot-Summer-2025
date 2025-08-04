@@ -26,7 +26,7 @@ extern StepState_PrePet currentStepState_PrePet;
 enum StepState_Pet1 {FindTarget, LiftBasket, ArmSearchPreset, PetSearch, PetFound, PetGrab, ReturnArm};
 extern StepState_Pet1 currentStepState_Pet1;
 
-enum StepState_Ramp {FindRamp, AlignRamp, DropPet, ResetArm, ClimbRamp};
+enum StepState_Ramp {FindRamp, AlignRamp, ClimbRamp};
 extern StepState_Ramp currentStepState_Ramp;
 
 // --- Function Headers --- //

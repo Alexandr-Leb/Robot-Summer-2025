@@ -187,7 +187,9 @@ const int PET1_GRAB_TIME = 5000;
 
 // Runtime Parameters - Ramp
 const int RAMP_DETECTION_THRESHOLD = 300;
-const int RAMP_CORREECTION_TIME = 2000;
+const int RAMP_CORREECTION_TIMEOUT = 500;
+const int ARM_DROP_TURN_TIMER = 1200;
+const int ARM_DROP_RELEASE_TIMER = 800;
 
 // --- Function Headers --- //
 void initializeState();
@@ -258,11 +260,11 @@ void loop() {
         readReflectanceSensors();
         computePID();
         case StepState_PrePet::TurnArm:
-        setAllServoTargets(75, 50, 177, 142, 120);
+        setAllServoTargets(75, 50, 177, 137, 120);
         while (!allServosDone()) {
           updateServos();
         }
-        setAllServoTargets(75, 70, 177, 142, 120);
+        setAllServoTargets(75, 70, 177, 137 , 120);
         while (!allServosDone()) {
           updateServos();
         }
@@ -300,7 +302,7 @@ void loop() {
 
         // --- Begin LiftBasket --- //
         case StepState_Pet1::LiftBasket:
-        verticalMotorSetPower(2000);
+        verticalMotorSetPower(2000); 
         readReflectanceSensors();
         computePID();
         if (millis() - timeCheckpoint > LIFT_BASKET_TIME) {
@@ -380,6 +382,7 @@ void loop() {
         }
         if (allServosDone()) {
           currentPetState = PetState::Ramp;
+          setPIDValues(1.2, 0.0, 0.0, 0.0);
           forwardLeftReflectanceSum = 0;
           forwardReflectanceCount = 0;
           timeCheckpoint = millis();
@@ -405,6 +408,7 @@ void loop() {
           if (forwardLeftReflectanceSum / forwardReflectanceCount < RAMP_DETECTION_THRESHOLD) {
             currentStepState_Ramp = StepState_Ramp::AlignRamp;
             drivetrainSetPower(0);
+            setPIDValues(1.2, 0.0, 4.0, 0);
             timeCheckpoint = millis();
           }
           forwardLeftReflectanceSum = 0;
@@ -417,28 +421,27 @@ void loop() {
         case StepState_Ramp::AlignRamp:
         rightMotorSetPower(1500);
         readReflectanceSensors();
-        if (leftReflectance > RAMP_TAPE_FOUND_THRESHOLD && millis() - timeCheckpoint > RAMP_CORREECTION_TIME) {
+        if (leftReflectance > RAMP_TAPE_FOUND_THRESHOLD && millis() - timeCheckpoint > RAMP_CORREECTION_TIMEOUT) {
           currentStepState_Ramp = StepState_Ramp::ClimbRamp;
           drivetrainSetPower(0);
+          baseServo.speed = 0.2;
           timeCheckpoint = millis();
         }
         break;
         // --- End AlignRamp --- //
 
-        // --- Begin DropPet --- //
-        case StepState_Ramp::DropPet:
-        delay(100000);
-        break;
-        // --- End DropPet --- //
-
-        // --- Begin ResetArm --- //
-        case StepState_Ramp::ResetArm:
-        break;
-        // --- End ResetArm --- //
-
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
-        runPID_withBackup(1400);
+        runPID_withHysteresis(1400);
+        if (millis() - timeCheckpoint < ARM_DROP_TURN_TIMER) {
+          setAllServoTargets(170, 60, 30, 20, clawServo.currentAngle);
+        } else if (millis() - timeCheckpoint > ARM_DROP_TURN_TIMER && millis() - timeCheckpoint < ARM_DROP_TURN_TIMER + ARM_DROP_RELEASE_TIMER) {
+          servoGoTo(&clawServo, 120);
+        } else {
+          setAllServoTargets(90, 90, 177, 142, 120);
+        }
+        updateServos();
+        // UPDATE SERVO SPEED
         break;
         // --- End ClimbRamp --- //
 
