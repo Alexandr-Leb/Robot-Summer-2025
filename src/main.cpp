@@ -547,7 +547,7 @@ void loop() {
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
         runPID_withHysteresis(1000);
-        if (timeOfFlightReading < 70) {
+        if (timeOfFlightReading < 60) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
@@ -625,7 +625,7 @@ void loop() {
         } 
         if (allServosDone()) {
           currentStepState_Pet2 = StepState_Pet2::DropPet2;
-          setServoTarget(&baseServo, 150);
+          setServoTarget(&baseServo, 160);
           while(!servoDone(&baseServo)) {
             updateServo(&baseServo);
           }
@@ -636,7 +636,11 @@ void loop() {
 
         // --- Begin DropPet2 --- //
         case StepState_Pet2::DropPet2:
-        delay(2000000);
+        setServoTarget(&shoulderServo, 30);
+        while(!servoDone(&shoulderServo)) {
+          updateServo(&shoulderServo);
+        }
+        delay(10000000);
         break;
         // --- End DropPet2 --- //
 
