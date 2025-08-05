@@ -21,6 +21,8 @@ const int REFLECTANCE_COMPARISON_THRESHOLD = 150;
 const int NUM_REFLECTANCE_AVERAGE_COUNT = 10;
 const int NUM_REFLECTANCE_AVERAGE_COUNT_TAPE = 5;
 const int FORWARD_REFLECTANCE_COMPARISON_THRESHOLD = 500;
+const int TOF_DETECTION_THRESHOLD = 35;
+const int TOF_RANGE_THRESHOLD = 240;
 
 // --- Variables --- //
 // Variables - Motors
@@ -182,9 +184,17 @@ int forwardLeftReflectanceSum;
 int forwardRightReflectanceSum;
 int forwardReflectanceCount;
 
+int timeOfFlightSum;
+int timeOfFlightCount;
+int arrayValueMark;
+int lowerAngleMark;
+int upperAngleMark;
+int sweepAngleIncrement;
+int maxTOFbaseAngle;
+
 // --- Runtime Parameters --- //
 // Runtime Parameters - General
-const double CLAW_CLOSED_ANGLE = 0.0;
+const double CLAW_CLOSED_ANGLE = 2.0;
 const int CLAW_CLOSE_TIME = 1500;
 
 // Runtime Parameters - PrePet
@@ -192,7 +202,7 @@ const int BUCKET_CLEAR_TIME = 2000;
 const int GATE_CLEAR_TIME = 800;
 
 // Runtime Parameters - Pet1
-const int LIFT_BASKET_TIME = 4000;
+const int LIFT_BASKET_TIME = 2500;
 const int PET1_GRAB_TIME = 5000;
 
 // Runtime Parameters - Ramp
@@ -200,6 +210,12 @@ const int RAMP_DETECTION_THRESHOLD = 300;
 const int RAMP_CORREECTION_TIMEOUT = 500;
 const int CLIMB_TIME_BEFOE_DROP = 1000;
 const int INCH_FORWARDS_TIME = 200;
+ 
+// Runtime Parameters - Pet3
+const int PET3_LOWER_SWEEP_ANGLE = 10;
+const int PET3_UPPER_SWEEP_ANGLE = 90;
+const int PET3_SWEEP_TIME = 3000;
+double timeOfFlightArray[PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE];
 
 // --- Function Headers --- //
 // Function Headers - Runtime Functions
@@ -241,6 +257,18 @@ void setup() {
   setPIDValues(2.1, 0.5, 0.0, 0.0);
 
   Serial.begin(115200);
+  
+  // Artificial Start Pet3
+  // delay(1000);
+  // currentPetState = Pet3;
+  // setAllServoTargets(120, 70, 170, 160, 130);
+  // while (!allServosDone()) {
+  //   updateServos();
+  // }
+  // currentPetState = PetState::Pet3;
+  // setPIDValues(1.2, 0.0, 0.0, 0.0);
+  // delay(1000);
+  // timeCheckpoint = millis();
 }
 
 void loop() {
@@ -396,15 +424,15 @@ void loop() {
         nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
         nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
         setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
-        while(!allServosDone()) {
+        while (!allServosDone()) {
           updateServos();
           delay(20);
         }
-        if (timeOfFlightReading < 25 || shoulderServo.targetAngle < 5) {
+        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
           servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
           currentStepState_Pet1 = StepState_Pet1::ReturnArm1;
           delay(CLAW_CLOSE_TIME);
-          timeCheckpoint = millis();
+          timeCheckpoint = millis();  
         }
         break;
         // --- End PetGrab1 --- //
@@ -524,7 +552,7 @@ void loop() {
 
         // --- Begin InchForwards --- //
         case StepState_Ramp::InchForwards:
-        setServoTarget(&baseServo, 150);
+        setServoTarget(&baseServo, 160);
         updateServo(&baseServo);
         runPID_withHysteresis(1400);
         if (millis() - timeCheckpoint > INCH_FORWARDS_TIME) {
@@ -547,12 +575,11 @@ void loop() {
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
         runPID_withHysteresis(1000);
-        if (timeOfFlightReading < 60) {
+        if (timeOfFlightReading < 65) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
-        break;
         break;
         // --- End FindTarget2 --- //
 
@@ -605,10 +632,10 @@ void loop() {
         nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
         nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
         setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
-        while(!allServosDone()) {
+        while (!allServosDone()) {
           updateServos();
         }
-        if (timeOfFlightReading < 25 || shoulderServo.targetAngle < 5) {
+        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
           servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
           currentStepState_Pet2 = StepState_Pet2::ReturnArm2;
           delay(CLAW_CLOSE_TIME);
@@ -626,21 +653,33 @@ void loop() {
         if (allServosDone()) {
           currentStepState_Pet2 = StepState_Pet2::DropPet2;
           setServoTarget(&baseServo, 160);
-          while(!servoDone(&baseServo)) {
+          while (!servoDone(&baseServo)) {
             updateServo(&baseServo);
           }
           timeCheckpoint = millis();
         }
-        break;
+        break; 
         // --- End ReturnArm2 --- //
 
         // --- Begin DropPet2 --- //
         case StepState_Pet2::DropPet2:
-        setServoTarget(&shoulderServo, 30);
-        while(!servoDone(&shoulderServo)) {
+        setServoTarget(&shoulderServo, 25);
+        setServoTarget(&elbowServo, 100);
+        setServoTarget(&wristServo, 137);
+        while (!servoDone(&shoulderServo) || !servoDone(&elbowServo) || !servoDone(&wristServo)) {
           updateServo(&shoulderServo);
+          updateServo(&elbowServo);
+          updateServo(&wristServo);
         }
-        delay(10000000);
+        servoGoTo(&clawServo, 130);
+        delay(CLAW_CLOSE_TIME);
+        setAllServoTargets(120, 70, 170, 160, 130);
+        while (!allServosDone()) {
+          updateServos();
+        }
+        currentPetState = PetState::Pet3;
+        setPIDValues(1.2, 0.0, 0.0, 0.0);
+        timeCheckpoint = millis();
         break;
         // --- End DropPet2 --- //
 
@@ -654,22 +693,69 @@ void loop() {
 
         // --- Begin FindTarget3 --- //
         case StepState_Pet3::FindTarget3:
-        delay(10000000);
+        runPID_withBackup(700);
+        if (timeOfFlightReading < 120) {
+          currentStepState_Pet3 = StepState_Pet3::ArmSearchPreset3;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        }
         break;
         // --- End FindTarget3 --- //
 
         // --- Begin ArmSearchPreset3 --- //
         case StepState_Pet3::ArmSearchPreset3:
+        setServoTarget(&baseServo, PET3_UPPER_SWEEP_ANGLE);
+        updateServo(&baseServo);
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet3 = StepState_Pet3::PetSearch3;
+          baseServo.speed = 0.02;
+          timeOfFlightSum = 0;
+          timeOfFlightCount = 0;
+          sweepAngleIncrement = 0;
+          timeCheckpoint = millis();
+        }
         break;
         // --- End ArmSearchPreset3 --- //
 
         // --- Begin PetSearch3 --- //
         case StepState_Pet3::PetSearch3:
+        timeOfFlightSum += timeOfFlightReading;
+        timeOfFlightCount++;
+        if (millis() - timeCheckpoint > (int) ((double) PET3_SWEEP_TIME / (PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE))) {
+          timeOfFlightArray[sweepAngleIncrement] = (double) timeOfFlightSum / timeOfFlightCount;
+          timeOfFlightSum = 0;
+          timeOfFlightCount = 0;
+          sweepAngleIncrement++;
+          servoGoTo(&baseServo, PET3_LOWER_SWEEP_ANGLE + sweepAngleIncrement);
+          if (sweepAngleIncrement == PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE) {
+            arrayValueMark = timeOfFlightArray[0];
+            for (int i = 0; arrayValueMark > TOF_RANGE_THRESHOLD && i < PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE; i++) {
+              if (timeOfFlightArray[i] < TOF_RANGE_THRESHOLD) {
+                arrayValueMark = timeOfFlightArray[i];
+                lowerAngleMark = i;
+              }
+            }
+            arrayValueMark = timeOfFlightArray[PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE - 1];
+            for (int i = PET3_UPPER_SWEEP_ANGLE - PET3_LOWER_SWEEP_ANGLE - 1; arrayValueMark > TOF_RANGE_THRESHOLD && i >= 0; i--) {
+              if (timeOfFlightArray[i] < TOF_RANGE_THRESHOLD) {
+                arrayValueMark = timeOfFlightArray[i];
+                upperAngleMark = i;
+              }
+            }
+            maxTOFbaseAngle = PET3_LOWER_SWEEP_ANGLE + (int) ((lowerAngleMark + upperAngleMark) / 2.0);
+          }
+          currentStepState_Pet3 = StepState_Pet3::PetFound3;
+        }
         break;
         // --- End PetSearch3 --- //
 
         // --- Begin PetFound3 --- //
         case StepState_Pet3::PetFound3:
+        setServoTarget(&baseServo, maxTOFbaseAngle);
+        while (!servoDone(&baseServo)) {
+          updateServo(&baseServo);
+        }
+        delay(100000);
         break;
         // --- End PetFound3 --- //
 
