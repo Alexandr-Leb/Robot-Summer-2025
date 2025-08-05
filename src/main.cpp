@@ -203,7 +203,6 @@ const int INCH_FORWARDS_TIME = 200;
 
 // --- Function Headers --- //
 // Function Headers - Runtime Functions
-void dropPetOver();
 
 // Function Headers - Switch State Functions
 void initializeState();
@@ -532,7 +531,7 @@ void loop() {
           currentPetState = PetState::Pet2;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
-          delay(5000);
+          delay(1000);
         }
         break; 
         // --- End InchForwards --- //
@@ -548,7 +547,7 @@ void loop() {
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
         runPID_withHysteresis(1000);
-        if (timeOfFlightReading < 100) {
+        if (timeOfFlightReading < 70) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
@@ -559,7 +558,7 @@ void loop() {
 
         // --- Begin ArmSearchPreset2 --- //
         case StepState_Pet2::ArmSearchPreset2:
-        setServoTarget(&baseServo, 110);
+        setServoTarget(&baseServo, 90);
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet2 = StepState_Pet2::PetSearch2;
@@ -573,7 +572,7 @@ void loop() {
 
         // --- Begin PetSearch2 --- //
         case StepState_Pet2::PetSearch2:
-        setServoTarget(&baseServo, 170);
+        setServoTarget(&baseServo, 150);
         updateServo(&baseServo);
         readMagnetometer();
         if (magnetometerMagnitude > maxMagnetometerReading) {
@@ -609,7 +608,7 @@ void loop() {
         while(!allServosDone()) {
           updateServos();
         }
-        if (timeOfFlightReading < 20 || shoulderServo.targetAngle < 5) {
+        if (timeOfFlightReading < 25 || shoulderServo.targetAngle < 5) {
           servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
           currentStepState_Pet2 = StepState_Pet2::ReturnArm2;
           delay(CLAW_CLOSE_TIME);
@@ -626,6 +625,10 @@ void loop() {
         } 
         if (allServosDone()) {
           currentStepState_Pet2 = StepState_Pet2::DropPet2;
+          setServoTarget(&baseServo, 150);
+          while(!servoDone(&baseServo)) {
+            updateServo(&baseServo);
+          }
           timeCheckpoint = millis();
         }
         break;
@@ -633,11 +636,7 @@ void loop() {
 
         // --- Begin DropPet2 --- //
         case StepState_Pet2::DropPet2:
-        setServoTarget(&baseServo, 160);
-        while(!servoDone(&baseServo)) {
-          updateServo(&baseServo);
-        }
-        delay(1000000);
+        delay(2000000);
         break;
         // --- End DropPet2 --- //
 
@@ -651,6 +650,7 @@ void loop() {
 
         // --- Begin FindTarget3 --- //
         case StepState_Pet3::FindTarget3:
+        delay(10000000);
         break;
         // --- End FindTarget3 --- //
 
@@ -817,69 +817,6 @@ void loop() {
 }
 
 // --- Functions --- //
-void dropPetOver() {
-  setServoTarget(&wristServo, 180);
-  while(!servoDone(&wristServo)) {
-    updateServo(&wristServo);
-    delay(20);
-  }
-  setServoTarget(&elbowServo, 110);
-  while(!servoDone(&elbowServo)) {
-    updateServo(&elbowServo);
-    delay(20);
-  } 
-  setServoTarget(&baseServo, 170);
-  while(!servoDone(&baseServo)) {
-    updateServo(&baseServo);
-    delay(20);
-  }
-  setServoTarget(&shoulderServo, 70);
-  while(!servoDone(&shoulderServo)) {
-    updateServo(&shoulderServo);
-    delay(20);
-  }
-  setServoTarget(&elbowServo, 10);
-  while(!servoDone(&elbowServo)) {
-    updateServo(&elbowServo);
-    delay(20);
-  }
-  setServoTarget(&wristServo, 20);
-  while(!servoDone(&wristServo)) {
-    updateServo(&wristServo);
-    delay(20);
-  }
-  setServoTarget(&shoulderServo, 60);
-  setServoTarget(&elbowServo, 20);
-  setServoTarget(&wristServo, 10);
-  while(!servoDone(&wristServo) || !servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
-    updateServo(&shoulderServo);
-    updateServo(&elbowServo);
-    updateServo(&wristServo);
-    delay(20);
-  }
-  servoGoTo(&clawServo, 120);
-  delay(CLAW_CLOSE_TIME);
-  setServoTarget(&shoulderServo, 75);
-  setServoTarget(&elbowServo, 10);
-  setServoTarget(&wristServo, 40);
-  while(!servoDone(&wristServo) || !servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
-    updateServo(&shoulderServo);
-    updateServo(&elbowServo);
-    updateServo(&wristServo);
-    delay(20);
-  }
-  setServoTarget(&baseServo, 90);
-  while(!servoDone(&baseServo)) {
-    updateServo(&baseServo);
-    delay(20);
-  }
-  setAllServoTargets(90, 70, 177, 142, 120);
-  while(!allServosDone()) {
-    updateServos();
-    delay(20);
-  }
-}
-
 void initializeState() {
   // Reflectance initialized upon entering state
   leftMotorSetPower(0);
