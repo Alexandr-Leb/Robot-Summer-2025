@@ -17,13 +17,16 @@ const double MIN_MS = 0.550; // in ms
 const double MAX_MS = 2.450; // in ms
 const double SERVO_ERROR = 0.01; // in degrees
 const double SERVO_STARTING_ANGLES[NUM_SERVOS] = {94, 50, 110, 180, 130}; // in degrees
-const double SERVO_STARTING_SPEED = 0.09; // in degrees/ms
-const double SERVO_MAX_ANGLE_CHANGE = 0.8; // in degrees
+const double SERVO_STARTING_SPEED = 0.18; // in degrees/ms
+const double SERVO_MAX_ANGLE_CHANGE = 1.6; // in degrees
 const double BICEP_LENGTH = 132.446; // in mm
 const double FOREARM_LENGTH = 105.641; // in mm
-const double SHOULDER_OFFSET_ANGLE = -7.7; // in degrees
+const double SHOULDER_OFFSET_ANGLE = -7.7; // in deg rees
 const double ELBOW_OFFSET_ANGLE = -16.8; // in degrees
 const double WRIST_OFFSET_ANGLE = -30.6; // in degrees // Positive brings down // was -37.6
+const double SHOULDER_OFFSET_ANGLE_HIGHER = -7.7; // in deg rees
+const double ELBOW_OFFSET_ANGLE_HIGHER = -16.8; // in degrees
+const double WRIST_OFFSET_ANGLE_HIGHER = -20.6; // in degrees // Positive brings down // was -37.6
 
 // --- Variables --- //
 struct Servo {
@@ -138,4 +141,13 @@ double calculateElbowAngle(double shoulderAngle, double height) {
 
 double calculateWristAngle(double shoulderAngle, double elbowAngle, double height) {
   return -shoulderAngle - SHOULDER_OFFSET_ANGLE + elbowAngle + ELBOW_OFFSET_ANGLE - WRIST_OFFSET_ANGLE;
+}
+
+double calculateElbowAngle_HIGHER(double shoulderAngle, double height) {
+  return shoulderAngle + SHOULDER_OFFSET_ANGLE_HIGHER - ELBOW_OFFSET_ANGLE_HIGHER
+  + (180.0 / PI) * asin((BICEP_LENGTH * sin((PI / 180.0) * (shoulderAngle + SHOULDER_OFFSET_ANGLE_HIGHER)) - height) / FOREARM_LENGTH);
+}
+
+double calculateWristAngle_HIGHER(double shoulderAngle, double elbowAngle, double height) {
+  return -shoulderAngle - SHOULDER_OFFSET_ANGLE_HIGHER + elbowAngle + ELBOW_OFFSET_ANGLE_HIGHER - WRIST_OFFSET_ANGLE_HIGHER;
 }

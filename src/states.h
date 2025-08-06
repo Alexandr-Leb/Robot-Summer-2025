@@ -14,7 +14,7 @@ extern bool resetSwitchState;
 enum SwitchState {Run, Initialize, Reset, Off};
 extern SwitchState currentSwitchState;
 
-enum PetState {PrePet, Pet1, Ramp, Pet2, Pet3, Pet4, Pet5, Pet6, Pet7, PostPet};
+enum PetState {PrePet, Pet1, Ramp, Pet2, Pet3, Pet4, Pet5, Pet6, Debris, Pet7, PostPet};
 extern PetState currentPetState;
 
 enum TaskState {TapeFollow, TapeFind};
