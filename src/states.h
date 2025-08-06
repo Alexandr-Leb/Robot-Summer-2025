@@ -44,6 +44,9 @@ extern StepState_Pet5 currentStepState_Pet5;
 enum StepState_Pet6 {FindTarget6, ArmSearchPreset6, PetSearch6, PetFound6, PetGrab6, DropPet6};
 extern StepState_Pet6 currentStepState_Pet6;
 
+enum StepState_Debris {FindDebris, Cross, FindTape};
+extern StepState_Debris currentStepState_Debris;
+
 // --- Function Headers --- //
 void stateSetup();
 void switchSetup();
