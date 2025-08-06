@@ -17,6 +17,7 @@
 #include "states.h"
 
 // --- Constants --- //
+const int REFLECTANCE_PRESET_CALIBRATION = 2600;
 const int REFLECTANCE_COMPARISON_THRESHOLD = 150;
 const int NUM_REFLECTANCE_AVERAGE_COUNT = 10;
 const int NUM_REFLECTANCE_AVERAGE_COUNT_TAPE = 5;
@@ -177,6 +178,7 @@ bool prevRightOnTape;
 // Variables - Runtime
 int loopCounter;
 unsigned long timeCheckpoint;
+bool presetCalibration;
 
 double height;
 double nextShoulderAngle;
@@ -277,6 +279,8 @@ void setup() {
   pidSetup();
   stateSetup();
 
+  presetCalibration = true;
+
   currentSwitchState = SwitchState::Off;
   currentPetState = PetState::PrePet;
 
@@ -294,14 +298,6 @@ void setup() {
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(2.1, 0.5, 0.0, 0.0);
-
-  Serial.begin(115200);
-  
-  // Artificial Start Pet3
-  // currentPetState = PetState::Pet2;
-  // currentStepState_Pet2 = StepState_Pet2::DropPet2;
-
-  // I AM CHANGING THRESHOLDS FROM CALIBRATION MANUALLY - STILL CALIBRATE BUT DOES NOTHING
 }
 
 void loop() {
@@ -1521,9 +1517,10 @@ void updateSwitchState() {
     if (initializeSwitchState && resetSwitchState) {
       currentSwitchState = SwitchState::Run;
       
-      // MANUAL CALIBRATION OF REFLECTANCE
-      leftReflectanceThreshold = 2600;
-      rightReflectanceThreshold = 2600;
+      if (presetCalibration) {
+        leftReflectanceThreshold = REFLECTANCE_PRESET_CALIBRATION;
+        rightReflectanceThreshold = REFLECTANCE_PRESET_CALIBRATION;
+      }
 
       servoGoTo(&clawServo, SERVO_STARTING_ANGLES[NUM_SERVOS - 1]);
       loopCounter = 0;
