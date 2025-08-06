@@ -151,6 +151,8 @@ StepState_Pet4 currentStepState_Pet4;
 StepState_Pet5 currentStepState_Pet5;
 StepState_Pet6 currentStepState_Pet6;
 StepState_Debris currentStepState_Debris;
+StepState_Pet7 currentStepState_Pet7;
+StepState_PostPet currentStepState_PostPet;
 
 // Variables - PID
 double k_p;
@@ -210,7 +212,7 @@ const int LIFT_BASKET_TIME = 2500;
 const int PET1_GRAB_TIME = 5000;
 
 // Runtime Parameters - Ramp
-const int RAMP_DETECTION_THRESHOLD = 300;
+const int RAMP_DETECTION_THRESHOLD = 200;
 const int RAMP_CORREECTION_TIMEOUT = 500;
 const int CLIMB_TIME_BEFOE_DROP = 1000;
 const int INCH_FORWARDS_TIME = 300;
@@ -237,8 +239,15 @@ const int PET5_DETECTION_TIMEOUT = 1000;
 // Runtime Parameters - Pet6
 
 // Runtime Parameters - Debris
-const int DEBRIS_FIND_TIME = 4000;
-const int DEBRIS_CROSS_TIME = 2000;
+const int DEBRIS_FIND_TIME = 3000;
+const int DEBRIS_CROSS_TIME = 1000;
+const int DEBRIS_REVERSE_TIME = 2000;
+const int DEBRIS_SWEEP_RIGHT_TIME = 800;
+
+// Runtime Parameters - PostPet
+const int REFLECTANCE_EDGE_THRESHOLD = 3300;
+const int REVERSE_BREAK_THRESHOLD = 500;
+const int RAISE_BASKET_TIME = 6000;
 
 // --- Function Headers --- //
 // Function Headers - Runtime Functions
@@ -280,6 +289,8 @@ void setup() {
   currentStepState_Pet5 = StepState_Pet5::FindTarget5;
   currentStepState_Pet6 = StepState_Pet6::FindTarget6;
   currentStepState_Debris = StepState_Debris::FindDebris;
+  currentStepState_Pet7 = StepState_Pet7::FindTarget7;
+  currentStepState_PostPet = StepState_PostPet::FindEdge;
 
   currentTaskState = TaskState::TapeFollow;
   setPIDValues(2.1, 0.5, 0.0, 0.0);
@@ -289,6 +300,8 @@ void setup() {
   // Artificial Start Pet3
   // currentPetState = PetState::Pet2;
   // currentStepState_Pet2 = StepState_Pet2::DropPet2;
+
+  // I AM CHANGING THRESHOLDS FROM CALIBRATION MANUALLY - STILL CALIBRATE BUT DOES NOTHING
 }
 
 void loop() {
@@ -459,9 +472,11 @@ void loop() {
 
         // --- Begin ReturnArm1 --- //
         case StepState_Pet1::ReturnArm1:
-        setServoTarget(&wristServo, 130);
-        while (!servoDone(&wristServo)) {
+        setServoTarget(&wristServo, 140);
+        setServoTarget(&shoulderServo, 90);
+        while (!servoDone(&wristServo) || !servoDone(&shoulderServo)) {
           updateServo(&wristServo);
+          updateServo(&shoulderServo);
           delay(20);
         }
         setAllServoTargets(90, 90, 160, 142, CLAW_CLOSED_ANGLE);
@@ -553,9 +568,9 @@ void loop() {
         if (millis() - timeCheckpoint <= 1000) {
           setAllServoTargets(180, 60, 110, 120, CLAW_CLOSED_ANGLE);
           updateServos();
-        } else if (millis() - timeCheckpoint > 1000 && millis() - timeCheckpoint <= 1800) {
+        } else if (millis() - timeCheckpoint > 1500 && millis() - timeCheckpoint <= 2300) {
           servoGoTo(&clawServo, 120);
-        } else if (millis() - timeCheckpoint > 1800 && millis() - timeCheckpoint <= 2600) {
+        } else if (millis() - timeCheckpoint > 2300 && millis() - timeCheckpoint <= 3100) {
           baseServo.speed = 0.02;
           setAllServoTargets(90, 70, 177, 142, 120);
           updateServos();
@@ -1179,11 +1194,6 @@ void loop() {
           delay(20);
         }
         dropPetBasket();
-        setAllServoTargets(10, 40, 130, 130, 120);
-        while (!allServosDone()) {
-          updateServos();
-          delay(20);
-        }
         currentPetState = PetState::Debris;
         setPIDValues(2.1, 0.5, 4.0, 0.0);
         resetError();  
@@ -1223,13 +1233,174 @@ void loop() {
 
         // --- Begin FindTape --- //
         case StepState_Debris::FindTape:
-        delay(20000000);
+        readReflectanceSensors();
+        if (millis() - timeCheckpoint > DEBRIS_SWEEP_RIGHT_TIME) {
+          leftMotorSetPower(1000);
+        } else {
+          rightMotorSetPower(1000);
+        }
+        if (leftOnTape || rightOnTape) {
+          currentPetState = PetState::Pet7;
+          drivetrainSetPower(0);
+          setAllServoTargets(170, 70, 170, 140, 130);
+          while (!allServosDone()) {
+            updateServos();
+            delay(20);
+          }
+          timeCheckpoint = millis();
+        }
         break;
         // --- End FindTape --- //
 
       }
       break;
       // --- End Debris --- //
+
+      // --- Begin Pet7 --- //
+      case PetState::Pet7:
+      switch (currentStepState_Pet7) {
+
+        // --- Begin FindTarget7 --- //
+        case StepState_Pet7::FindTarget7:
+        runPID_withBackup(700);
+        if (timeOfFlightReading < 110) {
+          currentStepState_Pet7 = StepState_Pet7::ArmSearchPreset7;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        } 
+        break;
+        // --- End FindTarget7 --- //
+
+        // --- Begin ArmSearchPreset7 --- //
+        case StepState_Pet7::ArmSearchPreset7:
+        setServoTarget(&baseServo, 180);
+        updateServo(&baseServo);
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet7 = StepState_Pet7::PetSearch7;
+          maxMagnetometerReading = 0.0;
+          maxMagnetometerBaseAngle = baseServo.currentAngle;
+          baseServo.speed = 0.02;
+          delay(500);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End ArmSearchPreset7 --- //
+
+        // --- Begin PetSearch7 --- //
+        case StepState_Pet7::PetSearch7:
+        setServoTarget(&baseServo, 80);
+        updateServo(&baseServo);
+        readMagnetometer();
+        if (magnetometerMagnitude > maxMagnetometerReading) {
+          maxMagnetometerReading = magnetometerMagnitude;
+          maxMagnetometerBaseAngle = baseServo.currentAngle;
+        }
+        if (servoDone(&baseServo)) {
+          currentStepState_Pet7 = StepState_Pet7::PetFound7;
+          baseServo.speed = SERVO_STARTING_SPEED;
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End PetSearch7 --- //
+
+        // --- Begin PetFound7 --- //
+        case StepState_Pet7::PetFound7:
+        setServoTarget(&baseServo, maxMagnetometerBaseAngle);
+        while (!servoDone(&baseServo)) {
+          updateServo(&baseServo);
+          delay(20);
+        } 
+        currentStepState_Pet7 = StepState_Pet7::PetGrab7;
+        timeCheckpoint = millis();
+        break;
+        // --- End PetFound7 --- //
+
+        // --- Begin PetGrab7 --- //
+        case StepState_Pet7::PetGrab7:
+        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+          delay(TOF_DETECTION_TIME_THRESHOLD);
+          if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+            servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
+            delay(CLAW_CLOSE_TIME);
+            currentStepState_Pet7 = StepState_Pet7::DropPet7;
+            timeCheckpoint = millis();
+          }
+        }
+        height = 12.0;
+        nextShoulderAngle = shoulderServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
+        nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
+        nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
+        setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
+        while (!allServosDone()) {
+          updateServos();
+          delay(20);
+        }
+        break;
+        // --- End PetGrab7 --- //
+
+        // --- Begin PetDrop7 --- //
+        setServoTarget(&wristServo, 140);
+        setServoTarget(&shoulderServo, 90);
+        while (!servoDone(&wristServo) || !servoDone(&shoulderServo)) {
+          updateServo(&wristServo);
+          updateServo(&shoulderServo);
+          delay(20);
+        }
+        setAllServoTargets(90, 90, 160, 142, CLAW_CLOSED_ANGLE);
+        while (!allServosDone()) {
+          updateServos();
+          delay(20);
+        }
+        dropPetBasket();
+        currentPetState = PetState::PostPet;
+        setPIDValues(1.2, 0.0, 0.0, 0.0);
+        timeCheckpoint = millis();
+        // --- End PetDrop7 --- //
+
+      }
+      break;
+      // --- End Pet7 --- //
+
+      // --- Begin PostPet --- //
+      case PetState::PostPet:
+      switch (currentStepState_PostPet) {
+
+        // --- Begin FindEdge --- //
+        case StepState_PostPet::FindEdge:
+        readForwardReflectanceSensors();
+        if (forwardLeftReflectance > REFLECTANCE_EDGE_THRESHOLD || forwardRightReflectance > REFLECTANCE_EDGE_THRESHOLD) {
+          currentStepState_PostPet = StepState_PostPet::RaiseBasket;
+          timeCheckpoint = millis();
+          if (millis() - timeCheckpoint > REVERSE_BREAK_THRESHOLD) {
+            drivetrainSetPower(-1000);
+          }
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End FindEdge --- //
+
+        // --- Begin RaiseBasket --- //
+        case StepState_PostPet::RaiseBasket:
+        verticalMotorSetPower(3000);
+        if (millis() - timeCheckpoint > RAISE_BASKET_TIME) {
+          currentStepState_PostPet = StepState_PostPet::Reverse;
+          verticalMotorSetPower(0);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End RaiseBasket --- //
+
+        // --- Begin Reverse --- //
+        case StepState_PostPet::Reverse:
+        drivetrainSetPower(-1000);
+        delay(60000);
+        break;
+        // --- End Reverse --- //
+
+      }
+      break;
+      // --- End PostPet --- //
  
     }
     break;
@@ -1311,7 +1482,7 @@ void initializeState() {
     updateServo(&servoArray[i]);
   }
   updateSwitchState();
-}
+} 
 
 void resetState() {
   leftMotorSetPower(0);
@@ -1333,7 +1504,6 @@ void offState() {
     updateServo(&servoArray[i]);
   }
   readReflectanceSensors();
-  Serial.printf("%d | %d\n", leftReflectance, rightReflectance);
   if (abs(leftReflectance - rightReflectance) < REFLECTANCE_COMPARISON_THRESHOLD) {
     servoGoTo(&clawServo, 60);
   } else {
@@ -1350,6 +1520,11 @@ void updateSwitchState() {
     // Compute states
     if (initializeSwitchState && resetSwitchState) {
       currentSwitchState = SwitchState::Run;
+      
+      // MANUAL CALIBRATION OF REFLECTANCE
+      leftReflectanceThreshold = 2600;
+      rightReflectanceThreshold = 2600;
+
       servoGoTo(&clawServo, SERVO_STARTING_ANGLES[NUM_SERVOS - 1]);
       loopCounter = 0;
       timeCheckpoint = millis();
