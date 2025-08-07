@@ -283,6 +283,7 @@ void computePID();
 void runHysteresis(int power);
 void resetError();
 void drivetrainBreak(int power);
+void runPID_withCorrection(int power);
 
 void setup() {
   drivetrainSetup();
@@ -625,7 +626,7 @@ void loop() {
 
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
-        runPID_withCorrection(1800);
+        runPID_withCorrection(2000);
         readForwardReflectanceSensors();
         forwardLeftReflectanceSum += forwardLeftReflectance;
         forwardRightReflectanceSum += forwardRightReflectance;
@@ -1822,7 +1823,8 @@ void runPID_withCorrection(int power) {
     break;
 
     case TaskState::TapeFind:
-    readReflectanceSensors();
+    leftReflectance = adc1_get_raw(LEFT_REFLECTANCE_PIN);
+    rightReflectance = adc1_get_raw(RIGHT_REFLECTANCE_PIN);
     if (prevLeftOnTape) {
       rightMotorSetPower((int) (power / 2.0));
       leftMotorSetPower((int) (-power / 2.0));
