@@ -219,7 +219,7 @@ const int RAMP_DETECTION_THRESHOLD = 200;
 const int RAMP_CORREECTION_TIMEOUT = 500;
 const int CLIMB_TIME_BEFOE_DROP = 1000;
 const int RAMP_TAPE_FOUND_THRESHOLD = 2800;
-const int INCH_FORWARDS_TIME = 400;
+const int INCH_FORWARDS_TIME = 500;
 const int TOP_RAMP_STOP_TIME = 1000;
 const int VEER_LEFT_TIME = 800;
 const int RAMP_NOT_FOUND_TIMEOUT = 5000;
@@ -1137,7 +1137,7 @@ void loop() {
         height = 12.0;
         nextShoulderAngle = shoulderServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
         nextElbowAngle = calculateElbowAngle_HIGHER(nextShoulderAngle, height);
-        nextWristAngle = -10.0 + calculateWristAngle_HIGHER(nextShoulderAngle, nextElbowAngle, height);
+        nextWristAngle = calculateWristAngle_HIGHER(nextShoulderAngle, nextElbowAngle, height);
         setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
         while (!allServosDone()) {
           updateServos();
