@@ -1808,3 +1808,32 @@ void drivetrainBreak(int power) {
   }
   drivetrainSetPower(0);
 }
+
+void runPID_withCorrection(int power) {
+  switch(currentTaskState) {
+    case TaskState::TapeFollow:
+    readReflectanceSensors();
+    computePID();
+    leftMotorSetPower((int) (power + pValue + dValue - abs(eValue)));
+    rightMotorSetPower((int) (power - pValue - dValue - abs(eValue)));
+    if (!leftOnTape && !rightOnTape) {
+      currentTaskState = TaskState::TapeFind;
+    }
+    break;
+
+    case TaskState::TapeFind:
+    readReflectanceSensors();
+    if (prevLeftOnTape) {
+      rightMotorSetPower((int) (power / 2.0));
+      leftMotorSetPower((int) (-power / 2.0));
+    } else if (prevRightOnTape) {
+      rightMotorSetPower((int) (-power / 2.0));
+      leftMotorSetPower((int) (power / 2.0));
+    }
+    if (leftOnTape && rightOnTape) {
+      computePID();
+      currentTaskState = TaskState::TapeFollow;
+    }
+    break; 
+  }
+}
