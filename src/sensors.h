@@ -3,12 +3,15 @@
 #include <Arduino.h>
 #include "driver/adc.h"
 #include <Wire.h>
-#include <Adafruit_VL6180X.h> // Time of flight
+#include <Adafruit_VL53L1X.h> // Time of flight
 #include <Adafruit_LIS3MDL.h> // Magnetometer
 #include <Adafruit_Sensor.h>
 
 // Header Files - Internal
 #include "esp_constants.h"
+
+#define XSHUT_PIN  -1
+#define IRQ_PIN    -1
 
 // --- Constants --- //
 // Constants - Reflectance Sensor
@@ -37,7 +40,7 @@ extern Adafruit_LIS3MDL lis;
 extern double magnetometerMagnitude;
 
 // Variables - Time of Flight
-extern Adafruit_VL6180X tof;
+extern Adafruit_VL53L1X tof;
 extern SemaphoreHandle_t i2cMutex;
 extern volatile uint16_t timeOfFlightReading;
 
@@ -100,13 +103,7 @@ void timeOfFlightSetup() {
   i2cMutex = xSemaphoreCreateMutex();          // create before tasks
 
   /* Kick the task onto core-0 (0 = PRO_CPU, 1 = APP_CPU)  */
-  xTaskCreatePinnedToCore(ToFTask,             // task code
-                          "VL6180_reader",     // name (for diagnostics)
-                          4096,                // stack bytes
-                          nullptr,             // parameter
-                          1,                   // priority (idle+1 is fine)
-                          nullptr,             // task handle
-                          0);
+  xTaskCreatePinnedToCore(ToFTask, "VL53L1_reader", 4096, nullptr, 1, nullptr, 0);
 }
 
 void readReflectanceSensors() {
@@ -156,23 +153,25 @@ void initializeReflectanceSensors(int initializeTime) {
 }
 
 void ToFTask(void *pv) {
-  Adafruit_VL6180X tof;                        // local = core-0 only
-  if (!tof.begin()) {
-    Serial.println("VL6180X NOT FOUND – task ends");
-    vTaskDelete(NULL);                         // kill task if sensor absent
+  if (!tof.begin(0x29, &Wire)) {              // default addr 0x29
+    Serial.println("VL53L1X NOT FOUND – task ends");
+    vTaskDelete(NULL);
   }
+  tof.setTimingBudget(50);                    // 15-500 ms valid
+  tof.startRanging();                         // continuous mode
 
-  const TickType_t period = pdMS_TO_TICKS(40); // ~25 Hz
+  const TickType_t period = pdMS_TO_TICKS(40); // ≈25 Hz
   TickType_t lastWake = xTaskGetTickCount();
 
   for (;;) {
-    // 1 ⟶ take bus,  2 ⟶ read,  3 ⟶ release
     xSemaphoreTake(i2cMutex, portMAX_DELAY);
-    uint8_t range = tof.readRange();           // blocking (≈10 ms max)
+    if (tof.dataReady()) {
+      int16_t d = tof.distance();             // −1 = invalid / out-of-range
+      if (d != -1)      timeOfFlightReading = (uint16_t)d;
+      else              timeOfFlightReading = 65535U;   // sentinel
+      tof.clearInterrupt();
+    }
     xSemaphoreGive(i2cMutex);
-
-    timeOfFlightReading = range;                    // update global
-
-    vTaskDelayUntil(&lastWake, period);        // precise 25 Hz cadence
+    vTaskDelayUntil(&lastWake, period);
   }
 }

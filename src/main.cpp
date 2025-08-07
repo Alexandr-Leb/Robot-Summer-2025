@@ -81,7 +81,7 @@ double maxMagnetometerReading;
 double maxMagnetometerBaseAngle;
 
 // Variables - Time of Flight
-Adafruit_VL6180X tof = Adafruit_VL6180X();
+Adafruit_VL53L1X tof(XSHUT_PIN, IRQ_PIN);
 SemaphoreHandle_t i2cMutex;
 uint16_t volatile timeOfFlightReading;
 
