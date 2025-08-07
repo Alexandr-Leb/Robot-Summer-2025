@@ -204,7 +204,7 @@ int maxTOFbaseAngle;
 // --- Runtime Parameters --- //
 // Runtime Parameters - General
 const double CLAW_CLOSED_ANGLE = 2.0;
-const int CLAW_CLOSE_TIME = 1500;
+const int CLAW_CLOSE_TIME = 1200;
 
 // Runtime Parameters - PrePet
 const int BUCKET_CLEAR_TIME = 2000;
@@ -218,7 +218,7 @@ const int PET1_GRAB_TIME = 5000;
 const int RAMP_DETECTION_THRESHOLD = 200;
 const int RAMP_CORREECTION_TIMEOUT = 500;
 const int CLIMB_TIME_BEFOE_DROP = 1000;
-const int RAMP_TAPE_FOUND_THRESHOLD = 3000;
+const int RAMP_TAPE_FOUND_THRESHOLD = 2800;
 const int INCH_FORWARDS_TIME = 300;
 const int TOP_RAMP_STOP_TIME = 1000;
 const int VEER_LEFT_TIME = 800;
@@ -246,7 +246,7 @@ const int PET5_DETECTION_TIMEOUT = 1000;
 // Runtime Parameters - Debris
 const int DEBRIS_FIND_TIME = 3000;
 const int DEBRIS_CROSS_TIME = 1000;
-const int DEBRIS_REVERSE_TIME = 2000;
+const int DEBRIS_BACKUP_TIME = 2000;
 const int DEBRIS_SWEEP_RIGHT_TIME = 800;
 
 // Runtime Parameters - PostPet
@@ -382,7 +382,7 @@ void loop() {
           setPIDValues(1.2, 0.0, 0.0, 0.0);
           runPID_withBackup(700);
         }
-        if (timeOfFlightReading < 80) { 
+        if (timeOfFlightReading < 60) { 
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
           drivetrainBreak(700);
           timeCheckpoint = millis();
@@ -649,7 +649,7 @@ void loop() {
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
         runPID_withHysteresis(1000);
-        if (timeOfFlightReading < 80) {
+        if (timeOfFlightReading < 70) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainBreak(1500);
           baseServo.speed = 0.02;
@@ -763,13 +763,13 @@ void loop() {
         }
         servoGoTo(&clawServo, 130);
         delay(CLAW_CLOSE_TIME);
-        setAllServoTargets(120, 70, 160, 160, 130); // elbow was 170
+        setAllServoTargets(120, 70, 170, 160, 130); // elbow was 170
         while (!allServosDone()) {
           updateServos();
           delay(20);
         }
         currentPetState = PetState::Pet3;
-        setPIDValues(2.1, 0.5, 0.0, 0.0);
+        setPIDValues(2.8, 0.5, 0.0, 0.0);
         resetError();
         timeCheckpoint = millis();
         break;
@@ -786,7 +786,7 @@ void loop() {
         // --- Begin FindTarget3 --- //
         case StepState_Pet3::FindTarget3:
         runPID_withBackup(900);
-        if (timeOfFlightReading < 120 && millis() - timeCheckpoint > PET3_DETECTION_TIMEOUT) {
+        if (timeOfFlightReading < 100 && millis() - timeCheckpoint > PET3_DETECTION_TIMEOUT) {
           currentStepState_Pet3 = StepState_Pet3::ArmSearchPreset3;
           drivetrainBreak(1200);
           baseServo.speed = 0.02;
@@ -872,7 +872,7 @@ void loop() {
           }
         }
         nextElbowAngle = elbowServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
-        nextWristAngle = wristServo.currentAngle - 4 * GRAB_SHOULDER_ANGLE_INCREMENT;
+        nextWristAngle = wristServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
         setAllServoTargets(baseServo.currentAngle, shoulderServo.currentAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
         while (!allServosDone()) {
           updateServos();
@@ -1191,7 +1191,7 @@ void loop() {
         }
         height = 12.0;
         nextShoulderAngle = shoulderServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
-        nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
+        nextElbowAngle = 10.0 + calculateElbowAngle(nextShoulderAngle, height);
         nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
         setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
         while (!allServosDone()) {
@@ -1217,7 +1217,32 @@ void loop() {
           updateServo(&elbowServo);
           delay(20);
         }
-        dropPetBasket();
+        
+        setServoTarget(&shoulderServo, 70);
+        setServoTarget(&baseServo, 90);
+        setServoTarget(&wristServo, 180);
+        while(!servoDone(&baseServo) || !servoDone(&baseServo) || !servoDone(&shoulderServo)) {
+          updateServo(&baseServo);
+          updateServo(&shoulderServo);
+          updateServo(&wristServo);
+          delay(20);
+        }
+        setServoTarget(&elbowServo, 30);
+        setServoTarget(&shoulderServo, 80);
+        while(!servoDone(&elbowServo) || !servoDone(&shoulderServo)) {
+          updateServo(&elbowServo);
+          updateServo(&shoulderServo);
+          delay(20);
+        }
+        servoGoTo(&clawServo, 130);
+        delay(CLAW_CLOSE_TIME);
+        setServoTarget(&elbowServo, 150);
+        while(!servoDone(&elbowServo)) {
+          updateServo(&elbowServo);
+          delay(20);
+        }
+        servoGoTo(&clawServo, 130);
+
         currentPetState = PetState::Debris;
         setPIDValues(2.1, 0.5, 4.0, 0.0);
         resetError();  
@@ -1248,12 +1273,23 @@ void loop() {
         case StepState_Debris::Cross:
         drivetrainSetPower(3000);
         if (millis() - timeCheckpoint > DEBRIS_CROSS_TIME) {
-          currentStepState_Debris = StepState_Debris::FindTape;
+          currentStepState_Debris = StepState_Debris::Backup;
           drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
         // --- End Cross --- //
+
+        // --- Begin Backup --- //
+        case StepState_Debris::Backup:
+        drivetrainSetPower(-1000);
+        if (millis() - timeCheckpoint > DEBRIS_BACKUP_TIME) {
+          currentStepState_Debris = StepState_Debris::FindTape;
+          drivetrainSetPower(0);
+          timeCheckpoint = millis();
+        }
+        break;
+        // --- End Backup --- //
 
         // --- Begin FindTape --- //
         case StepState_Debris::FindTape:
@@ -1266,7 +1302,7 @@ void loop() {
         if (leftOnTape || rightOnTape) {
           currentPetState = PetState::Pet7;
           drivetrainSetPower(0);
-          setAllServoTargets(170, 70, 170, 80, 130);
+          setAllServoTargets(170, 70, 90, 70, 130);
           while (!allServosDone()) {
             updateServos();
             delay(20);
@@ -1353,7 +1389,7 @@ void loop() {
             timeCheckpoint = millis();
           }
         }
-        height = 12.0;
+        height = 18.0;
         nextShoulderAngle = shoulderServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
         nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
         nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);

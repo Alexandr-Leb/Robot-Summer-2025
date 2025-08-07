@@ -44,7 +44,7 @@ extern StepState_Pet5 currentStepState_Pet5;
 enum StepState_Pet6 {FindTarget6, ArmSearchPreset6, PetSearch6, PetFound6, PetGrab6, DropPet6};
 extern StepState_Pet6 currentStepState_Pet6;
 
-enum StepState_Debris {FindDebris, Cross, FindTape};
+enum StepState_Debris {FindDebris, Cross, Backup, FindTape};
 extern StepState_Debris currentStepState_Debris;
 
 enum StepState_Pet7 {FindTarget7, ArmSearchPreset7, PetSearch7, PetFound7, PetGrab7, DropPet7};

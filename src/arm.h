@@ -25,8 +25,8 @@ const double SHOULDER_OFFSET_ANGLE = -7.7; // in deg rees
 const double ELBOW_OFFSET_ANGLE = -16.8; // in degrees
 const double WRIST_OFFSET_ANGLE = -30.6; // in degrees // Positive brings down // was -37.6
 const double SHOULDER_OFFSET_ANGLE_HIGHER = -7.7; // in deg rees
-const double ELBOW_OFFSET_ANGLE_HIGHER = -16.8; // in degrees
-const double WRIST_OFFSET_ANGLE_HIGHER = -20.6; // in degrees // Positive brings down // was -37.6
+const double ELBOW_OFFSET_ANGLE_HIGHER = -20.8; // in degrees // was -16.8
+const double WRIST_OFFSET_ANGLE_HIGHER = -15.6; // in degrees // Positive brings down // was -37.6
 
 // --- Variables --- //
 struct Servo {
