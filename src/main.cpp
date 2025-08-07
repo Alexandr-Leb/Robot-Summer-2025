@@ -283,7 +283,6 @@ void computePID();
 void runHysteresis(int power);
 void resetError();
 void drivetrainBreak(int power);
-void runPID_withCorrection(int power);
 
 void setup() {
   drivetrainSetup();
@@ -328,7 +327,7 @@ void loop() {
 
         // --- Begin ClearBucket --- //
         case StepState_PrePet::ClearBucket:
-        runPID_withCorrection(900);
+        runPID_withBackup(900);
         if (millis() - timeCheckpoint > BUCKET_CLEAR_TIME) {
           currentStepState_PrePet = StepState_PrePet::FindGate;
           setPIDValues(1.5, 0.0, 0.0, 0.0);
@@ -339,7 +338,7 @@ void loop() {
 
         // --- Begin FindGate --- //
         case StepState_PrePet::FindGate:
-        runPID_withCorrection(900);
+        runPID_withBackup(900);
         if (timeOfFlightReading < 80) {
           currentStepState_PrePet = StepState_PrePet::ClearDoorway;
           setPIDValues(1.2, 0.0, 3.0, 0.0);
@@ -350,7 +349,7 @@ void loop() {
 
         // --- Begin ClearDoorway --- //
         case StepState_PrePet::ClearDoorway:
-        runPID_withCorrection(700);
+        runPID_withHysteresis(700);
         if (millis() - timeCheckpoint > GATE_CLEAR_TIME) {
           currentStepState_PrePet = StepState_PrePet::TurnArm;
           drivetrainSetPower(0);
@@ -386,10 +385,10 @@ void loop() {
         case StepState_Pet1::FindTarget1:
         if (millis() - timeCheckpoint > 300) {
           setPIDValues(2.1, 0.5, 0.0, 0.0);
-          runPID_withCorrection(900);
+          runPID_withBackup(900);
         } else {
           setPIDValues(1.2, 0.0, 0.0, 0.0);
-          runPID_withCorrection(700);
+          runPID_withBackup(700);
         }
         if (timeOfFlightReading < 80) { 
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
@@ -523,7 +522,7 @@ void loop() {
 
         // --- Begin FindRamp --- //
         case StepState_Ramp::FindRamp:
-        runPID_withCorrection(700);
+        runPID_withBackup(700);
         readForwardReflectanceSensors();
         forwardLeftReflectanceSum += forwardLeftReflectance;
         forwardReflectanceCount++;
@@ -535,7 +534,7 @@ void loop() {
               leftMotorSetPower(1800);
               rightMotorSetPower(0);
             }
-            runPID_withCorrection(0);
+            drivetrainSetPower(0);
             leftReflectanceSum = 0;
             reflectanceCount = 0;
             timeCheckpoint = millis();
@@ -545,7 +544,7 @@ void loop() {
         }
         if (millis() - timeCheckpoint > RAMP_NOT_FOUND_TIMEOUT) {
           currentStepState_Ramp = StepState_Ramp::AlignRamp;
-            runPID_withCorrection(0);
+            drivetrainSetPower(0);
             leftReflectanceSum = 0;
             reflectanceCount = 0;
             timeCheckpoint = millis();
@@ -566,15 +565,15 @@ void loop() {
             resetError();
             timeCheckpoint = millis();
             while (millis() - timeCheckpoint < 500) {
-              runPID_withCorrection(900);
+              runPID_withHysteresis(900);
             }
             timeCheckpoint = millis();
             while (millis() - timeCheckpoint < CLIMB_TIME_BEFOE_DROP) {
-              runPID_withCorrection(1800); // was 1600
+              runPID_withHysteresis(1800); // was 1600
             }
             timeCheckpoint = millis();
             while (millis() - timeCheckpoint < 500) {
-              runPID_withCorrection(900);
+              runPID_withHysteresis(900);
             }
             resetError();
             baseServo.speed = 0.1;
@@ -598,7 +597,7 @@ void loop() {
 
         // --- Begin DropPet1 --- //
         case StepState_Ramp::DropPet1:
-        runPID_withCorrection(900);
+        runPID_withHysteresis(900);
         if (millis() - timeCheckpoint <= 1000) {
           setServoTarget(&baseServo, 170);
           updateServos();
@@ -626,7 +625,7 @@ void loop() {
 
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
-        runPID_withCorrection(2000);
+        runPID_onRamp(1800);
         readForwardReflectanceSensors();
         forwardLeftReflectanceSum += forwardLeftReflectance;
         forwardRightReflectanceSum += forwardRightReflectance;
@@ -648,14 +647,14 @@ void loop() {
         case StepState_Ramp::InchForwards:
         setServoTarget(&baseServo, 135);
         updateServo(&baseServo);
-        runPID_withCorrection(1400);
+        runPID_withHysteresis(1400);
         if (millis() - timeCheckpoint > INCH_FORWARDS_TIME) {
           currentPetState = PetState::Pet2;
           breakTime = millis();
           while (millis() - breakTime < 200) {
             drivetrainSetPower(-1000);
           }
-          runPID_withCorrection(0);
+          drivetrainSetPower(0);
           delay(TOP_RAMP_STOP_TIME);
           setPIDValues(1.8, 0.0, 4.0, 0.0);
           resetError();
@@ -676,14 +675,14 @@ void loop() {
         case StepState_Pet2::FindTarget2:
         if (millis() - timeCheckpoint < PET2_SLOW_DOWN_TIME) {
           setPIDValues(1.8, 0.0, 4.0, 0.0);
-          runPID_withCorrection(1200);
+          runPID_withHysteresis(1200);
         } else {
           setPIDValues(2.1, 0.5, 4.0, 0.0);
-          runPID_withCorrection(900);
+          runPID_withHysteresis(900);
         }
         if (timeOfFlightReading < 70) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
-          drivetrainBreak(2500);
+          drivetrainBreak(1400);
           baseServo.speed = 0.02;
           if (timeOfFlightReading < TOF_NO_SWEEP_THRESHOLD) {
             currentStepState_Pet2 = StepState_Pet2::PetGrab2;
@@ -743,9 +742,9 @@ void loop() {
 
         // --- Begin PetGrab2 --- //
         case StepState_Pet2::PetGrab2:
-        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 30) {
           delay(TOF_DETECTION_TIME_THRESHOLD);
-          if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+          if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 30) {
             servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
             delay(CLAW_CLOSE_TIME);
             currentStepState_Pet2 = StepState_Pet2::ReturnArm2;
@@ -820,7 +819,7 @@ void loop() {
 
         // --- Begin FindTarget3 --- //
         case StepState_Pet3::FindTarget3:
-        runPID_withCorrection(900);
+        runPID_withBackup(900);
         if (timeOfFlightReading < 120 && millis() - timeCheckpoint > PET3_DETECTION_TIMEOUT) { // was 90
           currentStepState_Pet3 = StepState_Pet3::ArmSearchPreset3;
           drivetrainBreak(1200);
@@ -937,7 +936,7 @@ void loop() {
 
         // --- Begin FindTarget4 --- //
         case StepState_Pet4::FindTarget4:
-        runPID_withCorrection(900);
+        runPID_withBackup(900);
         if (timeOfFlightReading < 240 && millis() - timeCheckpoint > PET4_DETECTION_TIMEOUT) {
           currentStepState_Pet4 = StepState_Pet4::ArmSearchPreset4;
           drivetrainBreak(900);
@@ -1055,7 +1054,7 @@ void loop() {
 
         // --- Begin FindTarget5 --- //
         case StepState_Pet5::FindTarget5:
-        runPID_withCorrection(800);
+        runPID_withHysteresis(800);
         if (timeOfFlightReading < 240 && timeOfFlightReading > 40 && millis() - timeCheckpoint > PET5_DETECTION_TIMEOUT) {
           currentStepState_Pet5 = StepState_Pet5::ArmSearchPreset5;
           drivetrainBreak(800);
@@ -1187,7 +1186,7 @@ void loop() {
 
         // --- Begin FindTarget6 --- //
         case StepState_Pet6::FindTarget6:
-        runPID_withCorrection(700);
+        runPID_withBackup(700);
         if (timeOfFlightReading < 110) {
           currentStepState_Pet6 = StepState_Pet6::ArmSearchPreset6;
           drivetrainBreak(700);
@@ -1322,7 +1321,7 @@ void loop() {
 
         // --- Begin FindDebris --- //
         case StepState_Debris::FindDebris:
-        runPID_withCorrection(900);
+        runPID_withHysteresis(900);
         if (millis() - timeCheckpoint > DEBRIS_FIND_TIME) {
           currentStepState_Debris = StepState_Debris::Cross;
           drivetrainSetPower(0);
@@ -1347,7 +1346,7 @@ void loop() {
         drivetrainSetPower(-700);
         if (millis() - timeCheckpoint > DEBRIS_BACKUP_TIME) {
           currentStepState_Debris = StepState_Debris::FindTape;
-          runPID_withCorrection(0);
+          drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
@@ -1384,7 +1383,7 @@ void loop() {
 
         // --- Begin FindTarget7 --- //
         case StepState_Pet7::FindTarget7:
-        runPID_withCorrection(700);
+        runPID_withBackup(700);
         if (timeOfFlightReading < 90) {
           currentStepState_Pet7 = StepState_Pet7::ArmSearchPreset7;
           drivetrainBreak(700);
@@ -1531,7 +1530,7 @@ void loop() {
         case StepState_PostPet::Align:
         leftMotorSetPower(1000);
         rightMotorSetPower(-1000);
-        if (millis() - timeCheckpoint > 800) {
+        if (millis() - timeCheckpoint > 500) {
           currentStepState_PostPet = StepState_PostPet::Reverse;
           timeCheckpoint = millis();
         }
@@ -1810,7 +1809,7 @@ void drivetrainBreak(int power) {
   drivetrainSetPower(0);
 }
 
-void runPID_withCorrection(int power) { 
+void runPID_withCorrection(int power) {
   switch(currentTaskState) {
     case TaskState::TapeFollow:
     readReflectanceSensors();
@@ -1823,8 +1822,7 @@ void runPID_withCorrection(int power) {
     break;
 
     case TaskState::TapeFind:
-    leftReflectance = adc1_get_raw(LEFT_REFLECTANCE_PIN);
-    rightReflectance = adc1_get_raw(RIGHT_REFLECTANCE_PIN);
+    readReflectanceSensors();
     if (prevLeftOnTape) {
       rightMotorSetPower((int) (power / 2.0));
       leftMotorSetPower((int) (-power / 2.0));
