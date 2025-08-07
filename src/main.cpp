@@ -224,6 +224,9 @@ const int TOP_RAMP_STOP_TIME = 1000;
 const int VEER_LEFT_TIME = 800;
 const int RAMP_NOT_FOUND_TIMEOUT = 5000;
 
+// Runtime Parameters - Pet2
+const int PET2_SLOW_DOWN_TIME = 500;
+
 // Runtime Parameters - Pet3
 const int PET3_DETECTION_TIMEOUT = 1000;
 const int PET3_LOWER_SWEEP_ANGLE = 90;
@@ -240,6 +243,10 @@ double pet4TimeOfFlightArray[PET4_UPPER_SWEEP_ANGLE - PET4_LOWER_SWEEP_ANGLE];
 
 // Runtime Parameters - Pet5
 const int PET5_DETECTION_TIMEOUT = 1000;
+const int PET5_LOWER_SWEEP_ANGLE = 130;
+const int PET5_UPPER_SWEEP_ANGLE = 180;
+const int PET5_SWEEP_TIME = 3000;
+double pet5TimeOfFlightArray[PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE];
 
 // Runtime Parameters - Pet6
 
@@ -247,12 +254,13 @@ const int PET5_DETECTION_TIMEOUT = 1000;
 const int DEBRIS_FIND_TIME = 3000;
 const int DEBRIS_CROSS_TIME = 1000;
 const int DEBRIS_BACKUP_TIME = 2000;
-const int DEBRIS_SWEEP_RIGHT_TIME = 800;
+const int DEBRIS_SWEEP_RIGHT_TIME = 2000;
 
 // Runtime Parameters - PostPet
 const int REFLECTANCE_EDGE_THRESHOLD = 3300;
 const int REVERSE_BREAK_THRESHOLD = 500;
 const int RAISE_BASKET_TIME = 6000;
+const int CLEAR_ZIPLINE_TIME = 800;
 
 // --- Function Headers --- //
 // Function Headers - Runtime Functions
@@ -353,7 +361,7 @@ void loop() {
         // --- Begin TurnArm --- //
         case StepState_PrePet::TurnArm:
         resetError();
-        setAllServoTargets(65, 70, 177, 137, 120);
+        setAllServoTargets(40, 70, 177, 137, 120);
         while (!allServosDone()) {
           updateServos();
         }
@@ -382,7 +390,7 @@ void loop() {
           setPIDValues(1.2, 0.0, 0.0, 0.0);
           runPID_withBackup(700);
         }
-        if (timeOfFlightReading < 60) { 
+        if (timeOfFlightReading < 80) { 
           currentStepState_Pet1 = StepState_Pet1::LiftBasket;
           drivetrainBreak(700);
           timeCheckpoint = millis();
@@ -409,7 +417,7 @@ void loop() {
 
         // --- Begin ArmSearchPreset1 --- //
         case StepState_Pet1::ArmSearchPreset1:
-        setServoTarget(&baseServo, 80);
+        setServoTarget(&baseServo, 60);
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet1 = StepState_Pet1::PetSearch1;
@@ -429,7 +437,7 @@ void loop() {
 
         // --- Begin PetSearch1 --- //
         case StepState_Pet1::PetSearch1:
-        setServoTarget(&baseServo, 40);
+        setServoTarget(&baseServo, 10);
         updateServo(&baseServo);
         readMagnetometer();
         if (magnetometerMagnitude > maxMagnetometerReading) {
@@ -604,7 +612,11 @@ void loop() {
 
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
-        runPID_onRamp(1700);
+        if (millis() - timeCheckpoint < 600) {
+          runPID_onRamp(2000);
+        } else {
+          runPID_onRamp(1500);
+        }
         readForwardReflectanceSensors();
         forwardLeftReflectanceSum += forwardLeftReflectance;
         forwardRightReflectanceSum += forwardRightReflectance;
@@ -648,7 +660,13 @@ void loop() {
 
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
-        runPID_withHysteresis(1000);
+        if (millis() - timeCheckpoint < PET2_SLOW_DOWN_TIME) {
+          setPIDValues(1.8, 0.0, 4.0, 0.0);
+          runPID_withHysteresis(1000);
+        } else {
+          setPIDValues(1.2, 0.0, 4.0, 0.0);
+          runPID_withHysteresis(700);
+        }
         if (timeOfFlightReading < 70) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainBreak(1500);
@@ -989,7 +1007,7 @@ void loop() {
           updateServo(&wristServo);
         }
         dropPetBasket();
-        setAllServoTargets(150, 50, 140, 125, 120);
+        setAllServoTargets(150, 50, 140, 115, 120);
         while (!allServosDone()) {
           updateServos();
         }
@@ -1025,10 +1043,10 @@ void loop() {
         updateServo(&baseServo);
         if (servoDone(&baseServo)) {
           currentStepState_Pet5 = StepState_Pet5::PetSearch5;
-          maxMagnetometerReading = 0.0;
-          maxMagnetometerBaseAngle = baseServo.currentAngle;
           baseServo.speed = 0.02;
-          delay(500);
+          timeOfFlightSum = 0;
+          timeOfFlightCount = 0;
+          sweepAngleIncrement = 0;
           timeCheckpoint = millis();
         }
         break;
@@ -1036,16 +1054,32 @@ void loop() {
 
         // --- Begin PetSearch5 --- //
         case StepState_Pet5::PetSearch5:
-        setServoTarget(&baseServo, 180);
-        updateServo(&baseServo);
-        readMagnetometer();
-        if (magnetometerMagnitude > maxMagnetometerReading) {
-          maxMagnetometerReading = magnetometerMagnitude;
-          maxMagnetometerBaseAngle = baseServo.currentAngle;
-        }
-        if (servoDone(&baseServo)) {
-          currentStepState_Pet5 = StepState_Pet5::PetFound5;
-          baseServo.speed = SERVO_STARTING_SPEED;
+        timeOfFlightSum += timeOfFlightReading;
+        timeOfFlightCount++;
+        if (millis() - timeCheckpoint > (int) ((double) PET5_SWEEP_TIME / (PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE))) {
+          pet5TimeOfFlightArray[sweepAngleIncrement] = (double) timeOfFlightSum / timeOfFlightCount;
+          timeOfFlightSum = 0;
+          timeOfFlightCount = 0;
+          sweepAngleIncrement++;
+          servoGoTo(&baseServo, PET5_LOWER_SWEEP_ANGLE + sweepAngleIncrement);
+          if (sweepAngleIncrement == PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE) {
+            arrayValueMark = pet5TimeOfFlightArray[0];
+            for (int i = 0; arrayValueMark > TOF_RANGE_THRESHOLD && i < PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE; i++) {
+              if (pet5TimeOfFlightArray[i] < TOF_RANGE_THRESHOLD) {
+                arrayValueMark = pet5TimeOfFlightArray[i];
+                lowerAngleMark = i;
+              }
+            }
+            arrayValueMark = pet5TimeOfFlightArray[PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE - 1];
+            for (int i = PET5_UPPER_SWEEP_ANGLE - PET5_LOWER_SWEEP_ANGLE - 1; arrayValueMark > TOF_RANGE_THRESHOLD && i >= 0; i--) {
+              if (pet5TimeOfFlightArray[i] < TOF_RANGE_THRESHOLD) {
+                arrayValueMark = pet5TimeOfFlightArray[i];
+                upperAngleMark = i;
+              }
+            }
+            maxTOFbaseAngle = PET5_LOWER_SWEEP_ANGLE + (int) ((lowerAngleMark + upperAngleMark) / 2.0);
+            currentStepState_Pet5 = StepState_Pet5::PetFound5;
+          }
           timeCheckpoint = millis();
         }
         break;
@@ -1053,7 +1087,7 @@ void loop() {
 
         // --- Begin PetFound5 --- //
         case StepState_Pet5::PetFound5:
-        setServoTarget(&baseServo, maxMagnetometerBaseAngle);
+        setServoTarget(&baseServo, maxTOFbaseAngle);
         while (!servoDone(&baseServo)) {
           updateServo(&baseServo);
           delay(20);
@@ -1282,7 +1316,7 @@ void loop() {
 
         // --- Begin Backup --- //
         case StepState_Debris::Backup:
-        drivetrainSetPower(-1000);
+        drivetrainSetPower(-700);
         if (millis() - timeCheckpoint > DEBRIS_BACKUP_TIME) {
           currentStepState_Debris = StepState_Debris::FindTape;
           drivetrainSetPower(0);
@@ -1294,15 +1328,15 @@ void loop() {
         // --- Begin FindTape --- //
         case StepState_Debris::FindTape:
         readReflectanceSensors();
-        if (millis() - timeCheckpoint > DEBRIS_SWEEP_RIGHT_TIME) {
-          leftMotorSetPower(1000);
+        if (millis() - timeCheckpoint < DEBRIS_SWEEP_RIGHT_TIME) {
+          rightMotorSetPower(1500);
         } else {
-          rightMotorSetPower(1000);
+          leftMotorSetPower(1500);
         }
-        if (leftOnTape || rightOnTape) {
+        if (leftOnTape && rightOnTape) {
           currentPetState = PetState::Pet7;
           drivetrainSetPower(0);
-          setAllServoTargets(170, 70, 90, 70, 130);
+          setAllServoTargets(170, 70, 90, 40, 130);
           while (!allServosDone()) {
             updateServos();
             delay(20);
@@ -1323,7 +1357,7 @@ void loop() {
         // --- Begin FindTarget7 --- //
         case StepState_Pet7::FindTarget7:
         runPID_withBackup(700);
-        if (timeOfFlightReading < 120) {
+        if (timeOfFlightReading < 70) {
           currentStepState_Pet7 = StepState_Pet7::ArmSearchPreset7;
           drivetrainBreak(700);
           timeCheckpoint = millis();
@@ -1351,7 +1385,7 @@ void loop() {
 
         // --- Begin PetSearch7 --- //
         case StepState_Pet7::PetSearch7:
-        setServoTarget(&baseServo, 80);
+        setServoTarget(&baseServo, 110);
         updateServo(&baseServo);
         readMagnetometer();
         if (magnetometerMagnitude > maxMagnetometerReading) {
@@ -1392,7 +1426,7 @@ void loop() {
         height = 18.0;
         nextShoulderAngle = shoulderServo.currentAngle - GRAB_SHOULDER_ANGLE_INCREMENT;
         nextElbowAngle = calculateElbowAngle(nextShoulderAngle, height);
-        nextWristAngle = calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
+        nextWristAngle = -10.0 + calculateWristAngle(nextShoulderAngle, nextElbowAngle, height);
         setAllServoTargets(baseServo.currentAngle, nextShoulderAngle, nextElbowAngle, nextWristAngle, clawServo.currentAngle);
         while (!allServosDone()) {
           updateServos();
@@ -1402,6 +1436,7 @@ void loop() {
         // --- End PetGrab7 --- //
 
         // --- Begin PetDrop7 --- //
+        case StepState_Pet7::DropPet7:
         setServoTarget(&wristServo, 140);
         setServoTarget(&shoulderServo, 90);
         while (!servoDone(&wristServo) || !servoDone(&shoulderServo)) {
@@ -1415,9 +1450,15 @@ void loop() {
           delay(20);
         }
         dropPetBasket();
+        setServoTarget(&shoulderServo, 60);
+        while (!servoDone(&shoulderServo)) {
+          updateServo(&shoulderServo);
+          delay(20);
+        }
         currentPetState = PetState::PostPet;
         setPIDValues(1.2, 0.0, 0.0, 0.0);
         timeCheckpoint = millis();
+        break;
         // --- End PetDrop7 --- //
 
       }
@@ -1430,14 +1471,9 @@ void loop() {
 
         // --- Begin FindEdge --- //
         case StepState_PostPet::FindEdge:
-        readForwardReflectanceSensors();
-        if (forwardLeftReflectance > REFLECTANCE_EDGE_THRESHOLD || forwardRightReflectance > REFLECTANCE_EDGE_THRESHOLD) {
+        drivetrainSetPower(900);
+        if (millis() - timeCheckpoint > CLEAR_ZIPLINE_TIME) {
           currentStepState_PostPet = StepState_PostPet::RaiseBasket;
-          timeCheckpoint = millis();
-          if (millis() - timeCheckpoint > REVERSE_BREAK_THRESHOLD) {
-            drivetrainSetPower(-1000);
-          }
-          drivetrainSetPower(0);
           timeCheckpoint = millis();
         }
         break;
@@ -1445,7 +1481,7 @@ void loop() {
 
         // --- Begin RaiseBasket --- //
         case StepState_PostPet::RaiseBasket:
-        verticalMotorSetPower(3000);
+        verticalMotorSetPower(2200);
         if (millis() - timeCheckpoint > RAISE_BASKET_TIME) {
           currentStepState_PostPet = StepState_PostPet::Reverse;
           verticalMotorSetPower(0);
@@ -1456,7 +1492,8 @@ void loop() {
 
         // --- Begin Reverse --- //
         case StepState_PostPet::Reverse:
-        drivetrainSetPower(-1000);
+        drivetrainSetPower(-900);
+        verticalMotorSetPower(-2500);
         delay(60000);
         break;
         // --- End Reverse --- //
@@ -1465,7 +1502,7 @@ void loop() {
       break;
       // --- End PostPet --- //
  
-    }
+    }  
     break;
     // --- End Run --- //
 
