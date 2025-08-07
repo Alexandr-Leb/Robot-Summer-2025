@@ -219,7 +219,7 @@ const int RAMP_DETECTION_THRESHOLD = 200;
 const int RAMP_CORREECTION_TIMEOUT = 500;
 const int CLIMB_TIME_BEFOE_DROP = 1000;
 const int RAMP_TAPE_FOUND_THRESHOLD = 2800;
-const int INCH_FORWARDS_TIME = 500;
+const int INCH_FORWARDS_TIME = 400;
 const int TOP_RAMP_STOP_TIME = 1000;
 const int VEER_LEFT_TIME = 800;
 const int RAMP_NOT_FOUND_TIMEOUT = 5000;
@@ -330,7 +330,7 @@ void loop() {
         runPID_withBackup(900);
         if (millis() - timeCheckpoint > BUCKET_CLEAR_TIME) {
           currentStepState_PrePet = StepState_PrePet::FindGate;
-          setPIDValues(1.2, 0.0, 0.0, 0.0);
+          setPIDValues(1.5, 0.0, 0.0, 0.0);
           timeCheckpoint = millis();
         }
         break;
@@ -338,7 +338,7 @@ void loop() {
 
         // --- Begin FindGate --- //
         case StepState_PrePet::FindGate:
-        runPID_withBackup(700);
+        runPID_withBackup(900);
         if (timeOfFlightReading < 80) {
           currentStepState_PrePet = StepState_PrePet::ClearDoorway;
           setPIDValues(1.2, 0.0, 3.0, 0.0);
@@ -956,8 +956,19 @@ void loop() {
           timeOfFlightCount = 0;
           sweepAngleIncrement = 0;
           timeCheckpoint = millis();
-        }
-        break;
+
+          // ARTIFICIAL
+          baseServo.speed = SERVO_STARTING_SPEED;
+          setAllServoTargets(150, 50, 140, 115, 120);
+          while (!allServosDone()) {
+            updateServos();
+          }
+          currentPetState = PetState::Pet5;
+          setPIDValues(2.1, 0.5, 4.0, 0.0);
+          resetError();
+          timeCheckpoint = millis();
+          }
+          break;
         // --- End ArmSearchPreset4 --- //
 
         // --- Begin PetSearch4 --- //
@@ -1230,9 +1241,9 @@ void loop() {
 
         // --- Begin PetGrab6 --- //
         case StepState_Pet6::PetGrab6:
-        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+        if (timeOfFlightReading < TOF_DETECTION_THRESHOLD - 5 || shoulderServo.targetAngle < 10) {
           delay(TOF_DETECTION_TIME_THRESHOLD);
-          if (timeOfFlightReading < TOF_DETECTION_THRESHOLD || shoulderServo.targetAngle < 5) {
+          if (timeOfFlightReading < TOF_DETECTION_THRESHOLD - 5 || shoulderServo.targetAngle < 10) {
             servoGoTo(&clawServo, CLAW_CLOSED_ANGLE);
             delay(CLAW_CLOSE_TIME);
             currentStepState_Pet6 = StepState_Pet6::DropPet6;
@@ -1496,6 +1507,7 @@ void loop() {
         if (millis() - timeCheckpoint > CLEAR_ZIPLINE_TIME) {
           currentStepState_PostPet = StepState_PostPet::RaiseBasket;
           drivetrainBreak(900);
+          baseServo.speed = SERVO_STARTING_SPEED;
           timeCheckpoint = millis();
         }
         break;
@@ -1504,6 +1516,8 @@ void loop() {
         // --- Begin RaiseBasket --- //
         case StepState_PostPet::RaiseBasket:
         verticalMotorSetPower(3600);
+        setAllServoTargets(10, 10, 100, 150, 120);
+        updateServos();
         if (millis() - timeCheckpoint > RAISE_BASKET_TIME) {
           currentStepState_PostPet = StepState_PostPet::Align;
           verticalMotorSetPower(0);
@@ -1516,7 +1530,7 @@ void loop() {
         case StepState_PostPet::Align:
         leftMotorSetPower(1000);
         rightMotorSetPower(-1000);
-        if (millis() - timeCheckpoint > 200) {
+        if (millis() - timeCheckpoint > 500) {
           currentStepState_PostPet = StepState_PostPet::Reverse;
           timeCheckpoint = millis();
         }
@@ -1537,7 +1551,7 @@ void loop() {
       }
       break;
       // --- End PostPet --- //
- 
+
     }
     break;
     // --- End Run --- //
