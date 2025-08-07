@@ -225,7 +225,7 @@ const int VEER_LEFT_TIME = 800;
 const int RAMP_NOT_FOUND_TIMEOUT = 5000;
 
 // Runtime Parameters - Pet2
-const int PET2_SLOW_DOWN_TIME = 500;
+const int PET2_SLOW_DOWN_TIME = 200;
 
 // Runtime Parameters - Pet3
 const int PET3_DETECTION_TIMEOUT = 1000;
@@ -612,7 +612,7 @@ void loop() {
 
         // --- Begin ClimbRamp --- //
         case StepState_Ramp::ClimbRamp:
-        if (millis() - timeCheckpoint < 600) {
+        if (millis() - timeCheckpoint < 500) {
           runPID_onRamp(2000);
         } else {
           runPID_onRamp(1500);
@@ -641,7 +641,7 @@ void loop() {
         runPID_withHysteresis(1400);
         if (millis() - timeCheckpoint > INCH_FORWARDS_TIME) {
           currentPetState = PetState::Pet2;
-          drivetrainSetPower(0);
+          drivetrainBreak(1000);
           delay(TOP_RAMP_STOP_TIME);
           setPIDValues(1.8, 0.0, 4.0, 0.0);
           resetError();
@@ -660,13 +660,15 @@ void loop() {
 
         // --- Begin FindTarget2 --- //
         case StepState_Pet2::FindTarget2:
-        if (millis() - timeCheckpoint < PET2_SLOW_DOWN_TIME) {
-          setPIDValues(1.8, 0.0, 4.0, 0.0);
-          runPID_withHysteresis(1000);
-        } else {
-          setPIDValues(1.2, 0.0, 4.0, 0.0);
-          runPID_withHysteresis(700);
-        }
+        // if (millis() - timeCheckpoint < PET2_SLOW_DOWN_TIME) {
+        //   setPIDValues(1.8, 0.0, 4.0, 0.0);
+        //   runPID_withHysteresis(1000);
+        // } else {
+        //   setPIDValues(1.2, 0.0, 4.0, 0.0);
+        //   runPID_withHysteresis(700);
+        // }
+        setPIDValues(1.8, 0.0, 4.0, 0.0);
+        runPID_withHysteresis(1000);
         if (timeOfFlightReading < 70) {
           currentStepState_Pet2 = StepState_Pet2::ArmSearchPreset2;
           drivetrainBreak(1500);
@@ -808,10 +810,6 @@ void loop() {
           currentStepState_Pet3 = StepState_Pet3::ArmSearchPreset3;
           drivetrainBreak(1200);
           baseServo.speed = 0.02;
-          timeCheckpoint = millis();
-        }
-        if (timeOfFlightReading < TOF_NO_SWEEP_THRESHOLD) {
-          currentStepState_Pet3 = StepState_Pet3::PetGrab3;
           timeCheckpoint = millis();
         }
         break;
@@ -1357,7 +1355,7 @@ void loop() {
         // --- Begin FindTarget7 --- //
         case StepState_Pet7::FindTarget7:
         runPID_withBackup(700);
-        if (timeOfFlightReading < 70) {
+        if (timeOfFlightReading < 60) {
           currentStepState_Pet7 = StepState_Pet7::ArmSearchPreset7;
           drivetrainBreak(700);
           timeCheckpoint = millis();
@@ -1701,7 +1699,7 @@ void runPID_onRamp(int power) {
 
     case TaskState::TapeFind:
     readReflectanceSensors();
-    drivetrainSetPower(-100);
+    drivetrainSetPower(-200);
     if (leftOnTape && rightOnTape) {
       computePID();
       currentTaskState = TaskState::TapeFollow;
