@@ -12,8 +12,7 @@
 
 // --- Constants --- //
 // Constants - Reflectance Sensor
-const int REFLECTANCE_THRESHOLD_OFFSET = -100;
-const int RAMP_TAPE_FOUND_THRESHOLD = 3000;
+const int REFLECTANCE_THRESHOLD_OFFSET = -200;
 
 // --- Variables --- //
 // Variables - Reflectance Sensor
